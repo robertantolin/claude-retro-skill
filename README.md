@@ -2,7 +2,11 @@
 
 A `/retro` skill for [Claude Code](https://claude.com/claude-code): an end-of-session retrospective the agent runs on itself, with a human approval gate on every change.
 
+**In plain terms:** your AI assistant reviews its own work at the end of each session, suggests what it should learn, and you approve what sticks.
+
 ## Install
+
+Comfortable in a terminal? Use the commands below. If not, skip to the paste-a-prompt option and Claude does the install for you.
 
 Copy the `retro` folder into your Claude Code skills directory:
 
@@ -34,9 +38,11 @@ Either way, end any working session with:
 1. **Reviews the session honestly.** What was attempted, what failed or needed correction, what worked. It must cite the specific mistakes from the actual conversation, not produce a rosy recap.
 2. **Extracts at most 3 candidate lessons** and routes each to the one place it will actually change behavior (see the routing table below).
 3. **Prunes.** It scans the existing lesson store for entries that are stale, redundant, contradicted by the current session, or already promoted into automation, and proposes deletions.
-4. **Presents a diff and stops.** Nothing is written until the human approves.
+4. **Presents a diff and stops.** A diff is a line-by-line list of its proposed changes. Nothing is written until the human approves.
 
 ## Example output
+
+In the diffs below, lines starting with `+` are what the agent proposes to add and lines starting with `-` are what it proposes to delete. You approve or reject.
 
 A typical proposed addition:
 
@@ -76,9 +82,9 @@ Saving every lesson into project memory or instruction files doesn't solve the p
 
 | Lesson type | Where it goes |
 |---|---|
-| Context gap (a fact that would have changed the approach) | The project's lesson store (memory entry or a `## Lessons Learned` line in CLAUDE.md) |
-| Recurring procedure | A skill under `.claude/skills/` |
-| Hard constraint (must ALWAYS / NEVER happen) | A deterministic hook, preferred over a rules file: code that blocks the action beats an instruction asking nicely |
+| Context gap (a fact that would have changed the approach) | The project's lesson store (memory entry or a `## Lessons Learned` line in CLAUDE.md, the project's standing instruction file) |
+| Recurring procedure | A skill under `.claude/skills/` (a reusable how-to the agent loads when needed) |
+| Hard constraint (must ALWAYS / NEVER happen) | A deterministic hook (a small piece of code that runs automatically, so the rule can't be forgotten), preferred over a rules file: code that blocks the action beats an instruction asking nicely |
 | Voice/style preference | The project's style loop, if it has one |
 | One-off, not generalizable | Discarded, with the reason stated |
 
