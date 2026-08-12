@@ -6,7 +6,7 @@ A `/retro` skill for [Claude Code](https://claude.com/claude-code): an end-of-se
 
 ## Install
 
-Comfortable in a terminal? Use the commands below. If not, skip to the paste-a-prompt option and Claude does the install for you.
+Two ways to install: run the commands yourself, or paste the prompt below and Claude does it for you.
 
 Copy the `retro` folder into your Claude Code skills directory:
 
@@ -17,7 +17,7 @@ cp -r claude-retro-skill/retro ~/.claude/skills/retro
 
 Use `~/.claude/skills/` to make it available in every project, or a project's `.claude/skills/` to scope it to that project.
 
-**No terminal? Ask Claude Code to install it.** Paste this into a Claude Code session:
+**Or ask Claude Code to install it.** Paste this into a session and the agent handles the paths and platform differences:
 
 ```
 Clone https://github.com/robertantolin/claude-retro-skill and copy its retro/
@@ -98,7 +98,7 @@ You accept, reject, or edit. The skill improves your project; you stay the edito
 
 ## Beyond Claude Code
 
-The skill is a single prompt file with no code dependencies. To port it to another agent harness, keep the four-step structure and the approval gate, and swap the routing targets (skills, hooks, CLAUDE.md) for whatever your setup uses to store instructions and automation.
+The skill is a single prompt file with no code dependencies, and the four-step loop is model-agnostic: any agent that keeps standing instruction files can run it. Keep the structure (honest review, at most 3 routed lessons, pruning) and the approval gate, and swap the routing targets for your tool's equivalents: Cursor's rules files, AGENTS.md for the OpenAI Codex CLI, GEMINI.md for the Gemini CLI, or simply a pinned document you maintain by hand. Conventions move fast, so the durable rule is: lessons go wherever your agent reliably reads standing instructions, and automation goes wherever your tool can enforce a check without being asked.
 
 ## License
 
