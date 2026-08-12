@@ -11,7 +11,19 @@ git clone https://github.com/robertantolin/claude-retro-skill.git
 cp -r claude-retro-skill/retro ~/.claude/skills/retro
 ```
 
-Use `~/.claude/skills/` to make it available in every project, or a project's `.claude/skills/` to scope it to that project. Then end any working session with:
+Use `~/.claude/skills/` to make it available in every project, or a project's `.claude/skills/` to scope it to that project.
+
+**No terminal? Ask Claude Code to install it.** Paste this into a Claude Code session:
+
+```
+Clone https://github.com/robertantolin/claude-retro-skill and copy its retro/
+folder verbatim into my user-level Claude Code skills directory
+(~/.claude/skills/retro on Mac/Linux, %USERPROFILE%\.claude\skills\retro on
+Windows). Do not modify SKILL.md. Confirm the file exists, then tell me how
+to invoke the skill.
+```
+
+Either way, end any working session with:
 
 ```
 /retro
