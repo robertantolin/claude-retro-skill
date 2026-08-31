@@ -65,12 +65,12 @@ Tier the changes by blast radius. Do not put both tiers behind one prompt: that 
 
 **AUTO-APPLY, no approval needed.** Write these, then report them as a done-list:
 
-- Adding, editing, or deleting an entry in a project lesson store, plus its index pointer.
+- Adding, editing, or deleting an entry in a project's persistent memory store, plus its index pointer. This tier is memory entries only.
 
 **STOP AND WAIT for explicit approval.** Never write these unasked:
 
 - Skills, `.claude/rules/` files, hooks.
-- Any CLAUDE.md, project or user-level, including a project's `## Lessons Learned`.
+- Any CLAUDE.md, project or user-level, including a project's `## Lessons Learned`, even when that section is serving as the project's lesson store. Editing a standing instruction file is never in the auto-apply tier.
 
 Present in this order, every time, so the output stays predictable:
 

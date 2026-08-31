@@ -1,8 +1,8 @@
 # claude-retro-skill
 
-A `/retro` skill for [Claude Code](https://claude.com/claude-code): an end-of-session retrospective the agent runs on itself, with a human approval gate on anything that changes how the agent behaves.
+A `/retro` skill for [Claude Code](https://claude.com/claude-code): an end-of-session retrospective the agent runs on itself, with a human approval gate on every change to its own standing instructions and automation.
 
-**In plain terms:** your AI assistant reviews its own work at the end of each session, suggests what it should learn, and you approve anything that would change how it works.
+**In plain terms:** your AI assistant reviews its own work at the end of each session, suggests what it should learn, and you approve anything that would rewrite its own instructions.
 
 ## Install
 
@@ -39,8 +39,9 @@ Either way, end any working session with:
 2. **Keeps only what clears the bar.** The test is "would knowing this at the start of the session have changed what I actually did?" Zero lessons is the expected result for a session that went normally.
 3. **Scopes each lesson before storing it.** A lesson about your machine or your standing preferences goes in your user-level instruction file, where every project can read it. Only project-specific lessons go in a project store.
 4. **Checks for recurrence.** Before writing, it greps the other stores. If the lesson is already written down somewhere, writing it again is pointless: the instruction layer already failed, so it proposes a hook instead.
-5. **Prunes to a budget.** The store is capped. Over cap, the agent must propose deletions to get back under, in a fixed eviction order.
-6. **Applies the cheap changes and stops for the rest.** Lesson-store entries are written and reported. Skills, rules, hooks, and any instruction file wait for your approval as a diff. A diff is a line-by-line list of proposed changes.
+5. **Routes what survived.** Each lesson goes to the one place it will actually fire at the right moment: a memory entry, an instruction file, a skill, or a hook (see the routing table below). Session state and anything dated is sent to a handoff doc instead, never the lesson store.
+6. **Prunes to a budget.** The store is capped. Over cap, the agent must propose deletions to get back under, in a fixed eviction order.
+7. **Applies the cheap changes and stops for the rest.** Memory entries are written and reported in a done-list you can undo. Skills, rules, hooks, and every instruction file including CLAUDE.md wait for your approval as a diff. A diff is a line-by-line list of proposed changes.
 
 ## Example output
 
@@ -102,7 +103,7 @@ Saving every lesson into project memory or instruction files doesn't solve the p
 
 The agent never edits its own instructions, skills, or hooks silently. Those are proposed as a unified diff and wait for you.
 
-The gate is tiered on purpose. Adding or deleting an entry in a project lesson store is cheap and reversible, so the agent does it and reports it in a done-list you can undo by number. Skills, rules, hooks, and instruction files change how the agent behaves everywhere, so those always stop and wait.
+The gate is tiered on purpose. Adding or deleting an entry in a project's persistent memory store is cheap, scoped to one project, and reversible, so the agent does it and reports it in a done-list you can undo by number. Skills, rules, hooks, and instruction files change how the agent behaves everywhere, so those always stop and wait. The line is the file, not the intent: if a project keeps its lessons as a `## Lessons Learned` section in CLAUDE.md rather than as memory entries, those edits wait for you like any other instruction-file change.
 
 That split exists because an approval prompt on every trivial write trains you to approve on reflex, which is exactly when the gate stops protecting the changes that matter. Every proposal still carries an **"In plain terms"** block: one to three sentences stating the concrete moment the session went wrong and what will happen differently next time, readable by any non-technical user.
 
