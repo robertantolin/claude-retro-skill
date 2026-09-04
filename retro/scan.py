@@ -13,7 +13,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,6 +65,27 @@ Reply with JSON only: [{"k": 0, "decision": "approve-all"}, ...]
 
 %s
 """
+
+
+def predates_lesson(cfg: Path, key: str, session_id: str, ts: str) -> bool:
+    """True when a correction cannot be a recurrence of a memory lesson: it comes from the
+    session that created the file (frontmatter originSessionId) or is older than the file."""
+    if not key.startswith("mem:"):
+        return False
+    slug, stem = key[4:].split("/", 1)
+    f = cfg / "projects" / slug / "memory" / f"{stem}.md"
+    if not f.exists():
+        return False
+    origin = re.search(r"^\s*originSessionId:\s*(\S+)", f.read_text(encoding="utf-8", errors="replace"), re.M)
+    if origin and origin.group(1).strip('"') == session_id:
+        return True
+    try:
+        msg = datetime.fromisoformat(ts[:19]).replace(tzinfo=timezone.utc)
+        st = f.stat()
+        created = datetime.fromtimestamp(getattr(st, "st_birthtime", st.st_ctime), tz=timezone.utc)
+        return msg < created
+    except (ValueError, OSError):
+        return False
 
 
 def lesson_index(cfg: Path):
@@ -293,7 +314,7 @@ def main(argv=None):
             work.append((p, off))
 
     counts = {"transcripts": len(work), "messages": 0, "corrections": 0, "matched": 0, "invented": 0,
-              "skipped": 0, "decisions": 0, "dormant": 0}
+              "skipped": 0, "predates": 0, "decisions": 0, "dormant": 0}
     sessions = []
     for p, off in work:
         try:
@@ -341,6 +362,10 @@ def main(argv=None):
                             index, a.match_model)
                 log.append(f"{s['store']}/{s['session'][:8]} #{m['id']} {res['confidence']} {res['match_key']} :: {it['gist']} :: {res['why']}")
                 if res["match_key"] and res["confidence"] in ("high", "medium"):
+                    if predates_lesson(cfg, res["match_key"], s["session"], m["ts"]):
+                        log.append(f"  skipped: correction predates lesson {res['match_key']}")
+                        counts["predates"] += 1
+                        continue
                     store = "global" if res["match_key"].split(":")[0] in ("global", "rule") else s["store"]
                     rows.append(finding_row(next_id(rows), today, store, s["session"], "recur",
                                             res["match_key"], m["text"], res["confidence"]))

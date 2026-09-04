@@ -2,6 +2,12 @@
 
 All notable changes to the `/retro` skill. Versions follow [Semantic Versioning](https://semver.org/): a major bump means the skill's behaviour or its data layout changed in a way you should read about before upgrading.
 
+## [3.0.1] - 2026-09-04
+
+### Fixed
+
+- **The scan no longer reports a lesson's own origin as a recurrence.** `scan.py` matched corrections against every lesson, including the correction that created the lesson in the first place, then handed the retro a `recur` row for it. A correction is now skipped when it comes from the session recorded in the memory file's `originSessionId`, or when it is older than the file itself. The first retro on v3.0.0 hit this on its first two findings. Summary line gains a `predates` count; three unit tests added (31 total).
+
 ## [3.0.0] - 2026-09-04
 
 The retro now closes its own loop. Until v2 the skill judged its own work; nothing outside the retro checked whether recorded lessons actually stopped mistakes from recurring. v3 adds an independent observer, a health check, and golden tests, and wires their output back into the next retro.
@@ -62,6 +68,7 @@ Five changes, each from a failure mode seen in sustained use.
 - Structured output: summary table, numbered proposals, explicit accept/edit/reject options, and an empty-retro format.
 - README with an install-by-prompt path and a portability section for other agent tools.
 
+[3.0.1]: https://github.com/robertantolin/claude-retro-skill/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/robertantolin/claude-retro-skill/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/robertantolin/claude-retro-skill/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/robertantolin/claude-retro-skill/releases/tag/v1.0.0

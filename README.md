@@ -125,7 +125,7 @@ The retro itself is a single prompt file; the scripts beside it (scan, health ch
 
 ## Versions
 
-Release notes live in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/robertantolin/claude-retro-skill/releases). The current release is v3.0.0. If you are upgrading from v2, read its "Upgrading from v2" section first: the ledger moved and the skill does not migrate it for you.
+Release notes live in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/robertantolin/claude-retro-skill/releases). The current release is v3.0.1. If you are upgrading from v2, read its "Upgrading from v2" section first: the ledger moved and the skill does not migrate it for you.
 
 ## License
 
