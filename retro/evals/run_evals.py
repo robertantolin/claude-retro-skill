@@ -42,7 +42,8 @@ def build_home(case, skill_src: Path):
     slug = synth.slug_of(str(work))
     store = cfg / "projects" / slug / "memory"
     store.mkdir(parents=True)
-    shutil.copytree(skill_src, cfg / "skills" / "retro")
+    shutil.copytree(skill_src, cfg / "skills" / "retro",
+                    ignore=shutil.ignore_patterns("results", "__pycache__", "*.pyc", ".pytest_cache"))
     shutil.copy(llm.claude_dir() / ".credentials.json", cfg / ".credentials.json")
     (cfg / "CLAUDE.md").write_text("# Test user\n\n## Machine gotchas\n- Example gotcha line for the sandbox.\n", encoding="utf-8")
     (cfg / "retro").mkdir()
@@ -205,11 +206,11 @@ def main(argv=None):
             run_record["store_snapshot"] = store_snapshot
             run_record["findings_snapshot"] = findings_snapshot
             run_record["ledger_snapshot"] = ledger_snapshot
+            cred = cfg / ".credentials.json"
+            if cred.exists():
+                cred.unlink()
             if a.keep:
-                cred = cfg / ".credentials.json"
-                if cred.exists():
-                    cred.unlink()
-                    print(f"deleted credentials from kept sandbox {root}")
+                print(f"deleted credentials from kept sandbox {root}")
                 run_record["sandbox"] = str(root)
             else:
                 shutil.rmtree(root, ignore_errors=True)

@@ -89,7 +89,7 @@ Saving every lesson into project memory or instruction files doesn't solve the p
 
 ## The five constraints that make it work
 
-**1. A hard cap, with receipts, and zero as the default.** Three lessons per session, maximum, and each must trace to a specific mistake in the session and clear an explicit bar: would knowing this yesterday have changed what the agent did? The cap forces triage; the receipts rule kills generic filler like "communicate more clearly"; the bar is what makes "no lessons this time" a normal outcome instead of an awkward one. A cap on its own tends to get read as a quota.
+**1. A hard cap, with receipts, and zero as the default.** At most one new lesson per session, and a second only if it quotes a different correction from the user in the same session; each must trace to a specific mistake in the session and clear an explicit bar: would knowing this yesterday have changed what the agent did? The cap forces triage; the receipts rule kills generic filler like "communicate more clearly"; the bar is what makes "no lessons this time" a normal outcome instead of an awkward one. A cap on its own tends to get read as a quota.
 
 **2. Scope is decided before storage.** Most agent memory is scoped per project, so a lesson about your shell, your tooling, or your preferences gets filed where only one project can see it, and every other project rediscovers it the hard way. The skill asks whether a lesson is project-level or person-level first, and sends person-level lessons to the user-level instruction file that loads everywhere.
 
@@ -121,7 +121,7 @@ You accept, reject, or edit. The skill improves your project; you stay the edito
 
 ## Beyond Claude Code
 
-The skill is a single prompt file with no code dependencies, and the loop is model-agnostic: any agent that keeps standing instruction files can run it. Keep the structure (honest review, a bar that permits zero lessons, scope before storage, recurrence into automation, routed lessons, budgeted pruning) and the tiered gate, then swap the routing targets for your tool's equivalents: Cursor's rules files, AGENTS.md for the OpenAI Codex CLI, GEMINI.md for the Gemini CLI, or simply a pinned document you maintain by hand. Conventions move fast, so the durable rule is: lessons go wherever your agent reliably reads standing instructions, and automation goes wherever your tool can enforce a check without being asked.
+The retro itself is a single prompt file; the scripts beside it (scan, health check, evals) are optional stdlib-only Python helpers, and the loop is model-agnostic: any agent that keeps standing instruction files can run it. Keep the structure (honest review, a bar that permits zero lessons, scope before storage, recurrence into automation, routed lessons, budgeted pruning) and the tiered gate, then swap the routing targets for your tool's equivalents: Cursor's rules files, AGENTS.md for the OpenAI Codex CLI, GEMINI.md for the Gemini CLI, or simply a pinned document you maintain by hand. Conventions move fast, so the durable rule is: lessons go wherever your agent reliably reads standing instructions, and automation goes wherever your tool can enforce a check without being asked.
 
 ## License
 

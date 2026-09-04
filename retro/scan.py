@@ -171,10 +171,10 @@ def classify_decisions(retros, model: str):
     for k, r in enumerate(retros):
         blocks.append(f"=== RETRO {k} ===\n{r['reply'][-2500:]}\n=== USER REPLY {k} ===\n{r['next_user'][:500]}")
     try:
-        items = llm.extract_json(llm.call(model, DECISION_PROMPT % "\n\n".join(blocks)))
+        items = llm.extract_json(_call_with_retry(model, DECISION_PROMPT % "\n\n".join(blocks)))
         by = {int(i["k"]): str(i.get("decision", "none")) for i in items if isinstance(i, dict) and "k" in i}
     except (ValueError, RuntimeError, TypeError):
-        by = {}
+        return []
     allowed = {"approve-all", "approve-some", "edit", "reject", "none"}
     return [by.get(k, "none") if by.get(k) in allowed else "none" for k in range(len(retros))]
 

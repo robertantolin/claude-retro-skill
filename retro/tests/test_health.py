@@ -1,5 +1,4 @@
 import sys
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -45,6 +44,22 @@ def test_findings_status_open_and_age(tmp_path):
     open_rows, age = health.findings_status(cfg / "retro" / "findings.tsv")
     assert open_rows == 1 and age > 1
     assert health.findings_status(cfg / "retro" / "missing.tsv") is None
+
+
+def test_findings_status_filters_by_store(tmp_path):
+    retro = tmp_path / ".claude" / "retro"
+    retro.mkdir(parents=True)
+    findings = retro / "findings.tsv"
+    findings.write_text(
+        "# last-scan: 2026-09-01T10:00\n"
+        "id\tfound\tstore\tsession\ttype\tlesson\tevidence\tconfidence\tstatus\tresolved\n"
+        "F0001\t2026-09-01\tproj-a\ts1\trecur\tmem:x\tfix it\thigh\topen\t\n"
+        "F0002\t2026-09-01\tproj-b\ts1\trecur\tmem:y\tfix it\thigh\topen\t\n"
+        "F0003\t2026-09-01\tglobal\ts1\trecur\tglobal:z\tfix it\thigh\topen\t\n")
+    assert health.findings_status(findings)[0] == 3
+    assert health.findings_status(findings, store="proj-a")[0] == 2
+    assert health.findings_status(findings, store="proj-b")[0] == 2
+    assert health.findings_status(findings, store="proj-c")[0] == 1
 
 
 def test_ledger_bad_stores(tmp_path):

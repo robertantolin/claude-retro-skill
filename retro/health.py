@@ -48,7 +48,7 @@ def store_stats(projects_dir: Path):
     return out
 
 
-def findings_status(findings: Path):
+def findings_status(findings: Path, store=None):
     if not findings.exists():
         return None
     lines = findings.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -59,7 +59,14 @@ def findings_status(findings: Path):
             age = (datetime.now() - datetime.fromisoformat(stamp)).total_seconds() / 86400
         except ValueError:
             pass
-    open_rows = sum(1 for l in lines[1:] if l.split("\t")[8:9] == ["open"])
+    open_rows = 0
+    for l in lines[1:]:
+        cols = l.split("\t")
+        if cols[8:9] != ["open"]:
+            continue
+        if store is not None and cols[2:3] not in ([store], ["global"]):
+            continue
+        open_rows += 1
     return open_rows, age
 
 
@@ -82,7 +89,7 @@ def report(cfg: Path, store=None) -> str:
     for slug, n, d in stats:
         if store is None or slug == store:
             lines.append(f"{slug}: {n} of {STORE_CAP} entries, {d} dated files")
-    fs = findings_status(cfg / "retro" / "findings.tsv")
+    fs = findings_status(cfg / "retro" / "findings.tsv", store)
     if fs is None:
         lines.append("Findings: no file; scan has never run")
     else:

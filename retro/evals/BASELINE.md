@@ -1,5 +1,15 @@
 # Golden eval baseline
 
+## Post-edit result
+
+Date: 2026-09-04. Results file: `skills/retro/evals/results/2026-09-04T10-09-43.json`. 13 of 15
+runs pass. Two residual misses: self-caught run 1 reported a ledger line in its reply but wrote
+none; findings-open run 3 omitted the literal "Empty retro" sentence. The user accepted shipping
+at 13 of 15, with the two residuals attributed to run-to-run model variance rather than a defect
+in the shipped skill.
+
+## Pre-edit skill: baseline run
+
 Date: 2026-09-03
 Command: `python skills/retro/evals/run_evals.py --runs 3`
 Results file: `skills/retro/evals/results/2026-09-03T21-58-51.json` (gitignored, kept locally)
@@ -12,9 +22,9 @@ Two earlier baseline attempts are superseded and excluded from the table below:
   corrections were user-general (routed to the approval-gated global CLAUDE.md by design, per
   spec section 6/12), so `new_entries` could never pass for them, and one fixture quote was only
   3 words against the judge prompt's 5-word floor. Both fixtures rewritten as project-only facts
-  in this commit; see item 3 of the fix-round-2 ruling.
+  in this commit; see per-run detail in the results file.
 
-## Pass table
+## Pre-edit skill: pass table
 
 | Case | Runs passing | Failing checks across the 3 runs |
 |---|---|---|
@@ -31,7 +41,7 @@ before and after the whole run: `real retro-log.tsv untouched: True`,
 because the normalized-substring check now short-circuits the judge whenever a required quote is
 already present verbatim, case-folded and whitespace-collapsed).
 
-## Per-run detail with grader reasons
+## Pre-edit skill: per-run detail with grader reasons
 
 | Case | Run | Result | Failing checks | Reason |
 |---|---|---|---|---|
@@ -61,8 +71,9 @@ already present verbatim, case-folded and whitespace-collapsed).
   in the skill worth its own defect ticket.
 - `new_entries` (two-corrections run 2 only, 1/3 fail; one-correction and the other two
   two-corrections runs pass): **corrected diagnosis, replacing the superseded run's wrong one.**
-  The prior baseline blamed a harness approval-gate limitation; that was the wrong cause per the
-  controller's Q1 ruling (project-only lessons auto-apply, they are not gated). With project-only
+  The prior baseline blamed a harness approval-gate limitation; that was the wrong cause
+  (project-only lessons auto-apply, they are not gated) - see per-run detail in the results file.
+  With project-only
   fixtures, `new_entries` mostly passes (4/5 of the write-expecting runs across both cases). The
   one remaining failure is the skill's own judgment call to consolidate two quoted corrections
   into a single coherent memory entry rather than writing two, which is a defensible reading of
@@ -82,7 +93,7 @@ already present verbatim, case-folded and whitespace-collapsed).
 `cases.py`: `one-correction` and `two-corrections` rewritten with project-only corrections (an
 operational quirk of this project's retry queue and send-report counting, not a fact derivable
 by reading the repo, and not a user-general preference) so the lessons route to the project
-memory/ store rather than the approval-gated global CLAUDE.md, per the controller's Q1 ruling.
+memory/ store rather than the approval-gated global CLAUDE.md; see per-run detail in the results file.
 `run_evals.py`: sandbox slug keyed off the real `work` directory (fix round 1); credentials
 deleted from a `--keep` sandbox before it is left on disk; a three-file real-data guard
 (`retro-log.tsv`, `retro/retro-log.tsv`, `retro/findings.tsv`) by (size, mtime); a

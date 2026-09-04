@@ -141,6 +141,23 @@ def test_call_with_retry_survives_timeout_then_succeeds(monkeypatch):
     assert result == "ok"
 
 
+def test_classify_decisions_retries_once_on_transient_runtime_error(monkeypatch):
+    monkeypatch.setattr(scan.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def fake_call(model, prompt, timeout=300):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("claude exit 1: transient")
+        return '[{"k": 0, "decision": "approve-all"}]'
+
+    monkeypatch.setattr(scan.llm, "call", fake_call)
+    retros = [{"reply": "proposal text", "next_user": "yes", "ts": "2026-09-01T10:00"}]
+    verdicts = scan.classify_decisions(retros, "sonnet")
+    assert calls["n"] == 2
+    assert verdicts == ["approve-all"]
+
+
 def test_match_accepts_a_list_reply_by_taking_first_dict(monkeypatch):
     monkeypatch.setattr(scan.time, "sleep", lambda s: None)
 
