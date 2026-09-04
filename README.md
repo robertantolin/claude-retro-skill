@@ -33,6 +33,16 @@ Either way, end any working session with:
 /retro
 ```
 
+## What ships in the folder
+
+- `SKILL.md`: the retro itself.
+- `health.py`: prints your store sizes, the Machine gotchas word count, and the age of the last scan. The retro calls it; you can run it any time: `python ~/.claude/skills/retro/health.py`.
+- `scan.py`: an independent observer. Run it weekly: `python ~/.claude/skills/retro/scan.py`. It reads your Claude Code session transcripts, finds the corrections you gave the assistant, checks each against your recorded lessons, and writes `~/.claude/retro/findings.tsv`. The next retro must address every open finding. It also records how you replied to past retros in `~/.claude/retro/decisions.tsv`. The scan runs on your own Claude subscription through `claude -p`; nothing leaves your machine except the model calls.
+- `evals/`: five golden cases. `python ~/.claude/skills/retro/evals/run_evals.py` runs the real skill inside a throwaway home directory with a synthetic session and grades the result. Run it before and after any edit to SKILL.md.
+- `tests/`: `python -m pytest ~/.claude/skills/retro/tests -q`.
+
+Data the skill creates lives in `~/.claude/retro/` and is never part of this repo.
+
 ## What /retro does
 
 1. **Reviews the session honestly.** What was attempted, what failed or needed correction, what worked. It must cite the specific mistakes from the actual conversation, not produce a rosy recap.
