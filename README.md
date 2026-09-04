@@ -123,6 +123,10 @@ You accept, reject, or edit. The skill improves your project; you stay the edito
 
 The retro itself is a single prompt file; the scripts beside it (scan, health check, evals) are optional stdlib-only Python helpers, and the loop is model-agnostic: any agent that keeps standing instruction files can run it. Keep the structure (honest review, a bar that permits zero lessons, scope before storage, recurrence into automation, routed lessons, budgeted pruning) and the tiered gate, then swap the routing targets for your tool's equivalents: Cursor's rules files, AGENTS.md for the OpenAI Codex CLI, GEMINI.md for the Gemini CLI, or simply a pinned document you maintain by hand. Conventions move fast, so the durable rule is: lessons go wherever your agent reliably reads standing instructions, and automation goes wherever your tool can enforce a check without being asked.
 
+## Versions
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/robertantolin/claude-retro-skill/releases). The current release is v3.0.0. If you are upgrading from v2, read its "Upgrading from v2" section first: the ledger moved and the skill does not migrate it for you.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
