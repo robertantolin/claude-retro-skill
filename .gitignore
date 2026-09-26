@@ -1,0 +1,5 @@
+# eval output carries session text and absolute paths from the machine that ran it
+retro/evals/results/
+__pycache__/
+*.pyc
+.pytest_cache/

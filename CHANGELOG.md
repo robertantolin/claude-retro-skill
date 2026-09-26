@@ -2,6 +2,55 @@
 
 All notable changes to the `/retro` skill. Versions follow [Semantic Versioning](https://semver.org/): a major bump means the skill's behaviour or its data layout changed in a way you should read about before upgrading.
 
+## [Unreleased]
+
+## [4.0.0] - 2026-09-26
+
+The retro now asks before every change, decides all of them in one dialog, and can undo any run. Read "Upgrading from 3.x" before installing: the data files under `~/.claude/retro/` change shape, and the skill now needs Claude Code's question tool, so it is Claude Code only.
+
+### Added
+
+- **Proposal cards, decided in one dialog.** Each retro raises at most three proposals. A proposal is a card: what changes, what you get, why you might say no, and the path to its exact diff. All cards are asked in one question dialog with the options Approve, Deny: not worth a change, Deny: already covered, Deny: wrong fix; anything typed under Other is a refine, which rewrites that proposal and asks again. Nothing is applied until every answer is in.
+- **Five kinds of change**, each with one target: `store-write` (a lesson file plus its index line), `store-delete`, `global-line` (your user-level instruction file), `rule-skill-hook`, `other-file`. Nothing is ever proposed into a project's CLAUDE.md.
+- **`journal.py`.** Every write goes through a snapshot and a commit, deleted files go to `~/.claude/retro/trash/<run>/` for 30 days, and "undo retro" (`python journal.py undo <run>`) puts a whole run back. "restore <file>" brings back one deleted file.
+- **`settings.py`** and `~/.claude/retro/settings.json`: approve-always per kind (set only by saying "retro settings"), a raised bar per project (three denials in a row of one kind stop it being proposed in that project until you reset it), first-run and history-scan state.
+- **`candidates.py`** and `~/.claude/retro/candidates/<project>.tsv`. The session scan logs observations in five categories: repeated manual work, revisited decisions, rework loops, tool friction, time sinks. One becomes a proposal on its second sighting, or at once when a single session shows three or more rounds or repeats.
+- **A session scan on every retro** (`scan.py --session`): one model call classifies this session's corrections and candidates before the report is written. The first run offers a one-time background history scan (last 90 days, everything, or skip). `scan.py --open` lists open findings and dormant lessons; `scan.py --resolve` closes a finding with a status and a reason.
+- **Over-cap pruning.** A store above 20 lessons gets a delete proposal of its own every run, at most five entries at a time and dormant lessons first, until it is back at the cap.
+- **`health.py --metrics`**: lessons that recurred after being written, proposal conversion, denials by kind, candidate confirmation, median time to first decision.
+- **A Housekeeping table** at the end of every report: store size against the cap, the gotchas word budget, open findings, scan coverage, approve-always kinds, raised bars.
+- **Evals grow from five to nine golden cases**, graded from the stream-json output, with `--raw` to keep every run's stream and `evals/card_check.py` to audit real transcripts for cards printed next to their question. Unit tests: 108 (31 in 3.0.1).
+- `README.md` and `install.md` inside the skill folder, and `license` and `metadata` fields in the `SKILL.md` frontmatter per the Agent Skills specification.
+
+### Changed
+
+- **Memory-store writes and deletes no longer auto-apply.** 3.x applied them and reported a done-list; 4.0 asks for every kind unless you have put that kind on approve-always.
+- **Report shape.** Session review (attempted, corrected by you, rework), a Findings table (`# | Problem | Insight | Status`), Candidates, the proposal cards, Applied, Housekeeping. Diffs live in `~/.claude/retro/proposals/<run>/N.diff` instead of inline in the report.
+- **Ledger.** `~/.claude/retro/retro-log.tsv` is one row per proposal with ten columns: `run_id, timestamp, project, proposal, finding_id, kind, decision, refine_count, applied, verified`. Only `ledger.py` writes it.
+- **`findings.tsv`** gains a `reason` column and the statuses `denied`, `no-decision`, `resolved:<why>` and `deferred:<what is missing>`. Rows written by 3.x are read as they are.
+- Lesson entries are at most 120 words and carry no dates, commit hashes or narrative. A global line into a full Machine gotchas section trims an existing line in the same diff so the section stays within 350 words.
+- The scan launches `claude` without a shell (`shutil.which`, `shell=False`) and no longer flashes a console window per model call on Windows.
+
+### Removed
+
+- The "Always apply this kind" option from the proposal dialog, and the follow-up question after a denial: the reason is now one of the Deny options. Approve-always remains a setting.
+- The inline "In plain terms" block and the inline diffs in the report; the card and the diff file replace them.
+
+### Fixed
+
+- A first-run race between the session scan and the background history scan: the history scan holds a lock, and a session scan that meets it is skipped and says so instead of failing.
+- Candidate matching compares stemmed content words by containment instead of Jaccard, so a short key matches a longer one that contains it.
+- A parked candidate is raised again on its next sighting instead of being closed for good.
+- The second proposal card was dropped from the report once the first proposal had been applied; all cards now print before the first question, and the single dialog carries each card in full.
+
+### Upgrading from 3.x
+
+1. Replace `~/.claude/skills/retro/` with the new folder, all of it.
+2. Your ledger migrates itself: on first use, a `retro-log.tsv` without the new header is moved aside as `retro-log.v2.tsv` and a fresh ledger starts. Nothing is deleted. (3.0.0 said the skill does not migrate the ledger; 4.0 does.)
+3. `findings.tsv` and `decisions.tsv` from 3.x are read as they are.
+4. The first retro asks whether to run a history scan. If you already backfilled with 3.x, "Skip" keeps what you have; a new scan re-reads your transcripts within the range you pick.
+5. Run the retro from an interactive Claude Code session. In `claude -p` there is no question tool, so the retro prints its proposals, records no decision, and offers them again next time.
+
 ## [3.0.1] - 2026-09-04
 
 ### Fixed
@@ -68,6 +117,8 @@ Five changes, each from a failure mode seen in sustained use.
 - Structured output: summary table, numbered proposals, explicit accept/edit/reject options, and an empty-retro format.
 - README with an install-by-prompt path and a portability section for other agent tools.
 
+[Unreleased]: https://github.com/robertantolin/claude-retro-skill/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/robertantolin/claude-retro-skill/compare/v3.0.1...v4.0.0
 [3.0.1]: https://github.com/robertantolin/claude-retro-skill/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/robertantolin/claude-retro-skill/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/robertantolin/claude-retro-skill/compare/v1.0.0...v2.0.0

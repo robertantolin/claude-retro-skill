@@ -1,131 +1,134 @@
 # claude-retro-skill
 
-A `/retro` skill for [Claude Code](https://claude.com/claude-code): an end-of-session retrospective the agent runs on itself, with a human approval gate on every change to its own standing instructions and automation.
+[![tests](https://github.com/robertantolin/claude-retro-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/robertantolin/claude-retro-skill/actions/workflows/tests.yml)
+[![release](https://img.shields.io/github/v/release/robertantolin/claude-retro-skill)](https://github.com/robertantolin/claude-retro-skill/releases)
+[![license](https://img.shields.io/github/license/robertantolin/claude-retro-skill)](LICENSE)
 
-**In plain terms:** your AI assistant reviews its own work at the end of each session, suggests what it should learn, and you approve anything that would rewrite its own instructions.
+A `/retro` skill for [Claude Code](https://claude.com/claude-code). At the end of a session the agent reviews its own work, checks whether each lesson already exists, proposes at most three changes to its memory, instructions or automation, and applies only what you approve. Every write is journaled and one command undoes a run.
+
+**In plain terms:** your assistant tells you where it went wrong today, suggests what it should learn, and you say yes or no to each suggestion before anything changes.
+
+**Privacy first.** The skill reads your Claude Code session transcripts. For the session you are closing it sends the model your own messages, a short tail (up to 600 characters) of Claude's reply before each one, and the one-line titles of your existing lessons, global instruction bullets and rules files. It does not send tool output or file contents. The optional one-time history scan does the same for past sessions in the range you choose, plus the text of past retro replies. Model calls go through your own `claude` login; nothing goes anywhere else. Everything the skill stores lives under `~/.claude/retro/`.
 
 ## Install
 
-Two ways to install: run the commands yourself, or paste the prompt below and Claude does it for you.
+As a plugin, from inside Claude Code:
 
-Copy the `retro` folder into your Claude Code skills directory:
+```
+/plugin marketplace add robertantolin/claude-retro-skill
+/plugin install retro@claude-retro-skill
+```
+
+Or copy the folder into your user-level skills directory:
 
 ```bash
 git clone https://github.com/robertantolin/claude-retro-skill.git
 cp -r claude-retro-skill/retro ~/.claude/skills/retro
 ```
 
-Use `~/.claude/skills/` to make it available in every project, or a project's `.claude/skills/` to scope it to that project.
-
-**Or ask Claude Code to install it.** Paste this into a session and the agent handles the paths and platform differences:
+Or paste this into any Claude Code session and let the agent do it:
 
 ```
 Clone https://github.com/robertantolin/claude-retro-skill and copy its retro/
 folder verbatim into my user-level Claude Code skills directory
 (~/.claude/skills/retro on Mac/Linux, %USERPROFILE%\.claude\skills\retro on
-Windows). Do not modify SKILL.md. Confirm the file exists, then tell me how
+Windows). Do not modify SKILL.md. Confirm the files exist, then tell me how
 to invoke the skill.
 ```
 
-Either way, end any working session with:
+Then end any working session with:
 
 ```
 /retro
 ```
 
+The first run creates `~/.claude/retro/` and asks one question: whether to scan your session history once (last 90 days, everything, or skip). See `retro/install.md` for the details.
+
+## What a retro looks like
+
+```
+## Session review
+- Attempted: migrate the export job to the new queue. Landed, after one correction.
+- Corrected by you: "the finance export must stay UTF-8 with BOM, Excel garbles it otherwise."
+- Rework: none.
+
+## Findings
+| # | Problem | Insight | Status |
+|---|---|---|---|
+| 1 | The export was written without the BOM and Excel showed broken accents. | A project lesson naming the encoding rule, read at the start of every session. | New. Proposal 1. |
+
+Candidates logged, not yet confirmed
+- The release checklist was assembled by hand from three files again; a second sighting makes it a proposal for a script.
+
+**Proposal 1 of 1: Record the finance export encoding rule**
+- What changes: adds one lesson file to this project's memory folder and its index line.
+- What you get: the next session starts knowing the export needs UTF-8 with BOM.
+- Why you might say no: the rule may belong in the export script itself, where it cannot be forgotten.
+- Exact edit: ~/.claude/retro/proposals/20260926-101502-3f1a/1.diff
+```
+
+Then one dialog asks about every proposal. Each question repeats its card, so you decide without scrolling back, and the options are **Approve**, **Deny: not worth a change**, **Deny: already covered**, **Deny: wrong fix**. Type anything else to refine: the proposal is rewritten to your instruction and asked again. Nothing is applied until every answer is in. The report ends with an **Applied** list, a **Housekeeping** table (store size against its cap, open findings, scan coverage, settings) and the undo command for the run.
+
+A session that went normally ends with "Nothing durable surfaced this session." That is the expected result most days.
+
+## What it proposes, and where it goes
+
+Every proposal has exactly one kind and one target:
+
+| Kind | Target |
+|---|---|
+| `store-write` | Add or edit a lesson in the project's memory folder (`~/.claude/projects/<project>/memory/`), plus its index line |
+| `store-delete` | Remove a lesson from a project store; this is how a store gets back under its cap |
+| `global-line` | A line in your user-level instruction file, for lessons about your machine or your standing preferences |
+| `rule-skill-hook` | A rules file, a skill, a hook, or `settings.json`: automation for a lesson that instructions have already failed to hold |
+| `other-file` | Any other path |
+
+Nothing is ever proposed into a project's `CLAUDE.md`, which is loaded every session and should stay short. A lesson that already exists somewhere is never written a second time: the proposal becomes a mechanism (a rule, hook or script) or "No action" with the reason.
+
+## The evidence bar
+
+- **A correction counts** when your words reached the agent wrong and a concrete change would have prevented it. "Be more careful" is not a change.
+- **An observation waits for a second sighting.** Repeated manual work, revisited decisions, rework loops, tool friction and time sinks are logged as candidates and become a proposal when a later session in the same project repeats them, or at once when one session shows three or more rounds of the same thing.
+- **At most three proposals per retro.** Lessons are at most 120 words and carry no dates or narrative.
+- **Stores are capped at 20 lessons.** A store over the cap gets a delete proposal of its own every run, dormant lessons first, until it is back at 20.
+- **Denials teach the retro.** Deny one kind of change three times in a row in a project and that kind stops being proposed there; it is logged instead until you say "retro settings" and reset it.
+
+## Undo and the things you can say
+
+| Say | What happens |
+|---|---|
+| `undo retro` | Reverts the last run: every file it edited is restored from its snapshot and every file it deleted comes back from the trash. It refuses if a file changed since. |
+| `restore <file name>` | Brings back one deleted file from the last run |
+| `retro settings` | Shows and changes approve-always kinds and raised bars |
+| `retro metrics` | Lessons that recurred after being written, proposal conversion, denials by kind |
+| `scan history` | Runs the background history scan again |
+
+Deleted files are kept in `~/.claude/retro/trash/<run>/` for 30 days.
+
 ## What ships in the folder
 
-- `SKILL.md`: the retro itself.
-- `health.py`: prints your store sizes, the Machine gotchas word count, and the age of the last scan. The retro calls it; you can run it any time: `python ~/.claude/skills/retro/health.py`.
-- `scan.py`: an independent observer. Run it weekly: `python ~/.claude/skills/retro/scan.py`. It reads your Claude Code session transcripts, finds the corrections you gave the assistant, checks each against your recorded lessons, and writes `~/.claude/retro/findings.tsv`. The next retro must address every open finding. It also records how you replied to past retros in `~/.claude/retro/decisions.tsv`. The scan runs on your own Claude subscription through `claude -p`; nothing leaves your machine except the model calls.
-- `evals/`: five golden cases. `python ~/.claude/skills/retro/evals/run_evals.py` runs the real skill inside a throwaway home directory with a synthetic session and grades the result. Run it before and after any edit to SKILL.md.
-- `tests/`: `python -m pytest ~/.claude/skills/retro/tests -q`.
+`retro/SKILL.md` is the procedure. The scripts beside it are standard-library Python and hold all state under `~/.claude/retro/`: `scan.py` (session and history scans, findings), `ledger.py` (one row per proposal and the raised bar), `journal.py` (snapshots, trash, undo), `settings.py`, `candidates.py`, `health.py` (store health and metrics), `llm.py` (model calls through `claude -p`). `tests/` has 108 unit tests that make no model calls; `evals/` has nine golden cases that run the real skill in a throwaway home and grade the report, with `BASELINE.md` recording every score.
 
-Data the skill creates lives in `~/.claude/retro/` and is never part of this repo.
+## Requirements
 
-## What /retro does
-
-1. **Reviews the session honestly.** What was attempted, what failed or needed correction, what worked. It must cite the specific mistakes from the actual conversation, not produce a rosy recap.
-2. **Keeps only what clears the bar.** The test is "would knowing this at the start of the session have changed what I actually did?" Zero lessons is the expected result for a session that went normally.
-3. **Scopes each lesson before storing it.** A lesson about your machine or your standing preferences goes in your user-level instruction file, where every project can read it. Only project-specific lessons go in a project store.
-4. **Checks for recurrence.** Before writing, it greps the other stores. If the lesson is already written down somewhere, writing it again is pointless: the instruction layer already failed, so it proposes a hook instead.
-5. **Routes what survived.** Each lesson goes to the one place it will actually fire at the right moment: a memory entry, an instruction file, a skill, or a hook (see the routing table below). Session state and anything dated is sent to a handoff doc instead, never the lesson store.
-6. **Prunes to a budget.** The store is capped. Over cap, the agent must propose deletions to get back under, in a fixed eviction order.
-7. **Applies the cheap changes and stops for the rest.** Memory entries are written and reported in a done-list you can undo. Skills, rules, hooks, and every instruction file including CLAUDE.md wait for your approval as a diff. A diff is a line-by-line list of proposed changes.
-
-## Example output
-
-In the diffs below, lines starting with `+` are what the agent proposes to add and lines starting with `-` are what it proposes to delete. You approve or reject.
-
-A typical proposed addition:
-
-```diff
---- a/CLAUDE.md
-+++ b/CLAUDE.md
-@@ ## Lessons Learned
-+- Never pass multi-line text (commit messages, JSON payloads) inline to a
-+  shell command; the shell re-parses quotes and backslashes. Write it to a
-+  file and pass the file (git commit -F msg.txt).
-```
-
-**In plain terms:** today's commit message contained quote marks, and the shell split it into bogus file paths, so the commit failed twice before we caught it. Next time the message gets written to a file first and handed to git as a file, which skips the re-parsing entirely.
-
-And a typical proposed deletion:
-
-```diff
---- a/CLAUDE.md
-+++ b/CLAUDE.md
-@@ ## Lessons Learned
--- Run the content linter manually before finishing website edits.
-```
-
-**In plain terms:** this reminder was promoted to a hook last month (the linter now runs automatically after every edit), so the written lesson is dead weight and comes out.
-
-## The problem
-
-Large language models and AI agents make mistakes. They hallucinate, miss project context or instructions, and deliver diminishing returns as context rot and bloat set in.
-
-Saving every lesson into project memory or instruction files doesn't solve the problem. As the file system grows, so does token consumption, and stale context degrades model performance as much as the original mistakes did. This skill treats the lesson store as something to curate, not just append to: a human-in-the-loop mechanism that turns the way you actually work into rules, skills, and automations.
-
-## The five constraints that make it work
-
-**1. A hard cap, with receipts, and zero as the default.** At most one new lesson per session, and a second only if it quotes a different correction from the user in the same session; each must trace to a specific mistake in the session and clear an explicit bar: would knowing this yesterday have changed what the agent did? The cap forces triage; the receipts rule kills generic filler like "communicate more clearly"; the bar is what makes "no lessons this time" a normal outcome instead of an awkward one. A cap on its own tends to get read as a quota.
-
-**2. Scope is decided before storage.** Most agent memory is scoped per project, so a lesson about your shell, your tooling, or your preferences gets filed where only one project can see it, and every other project rediscovers it the hard way. The skill asks whether a lesson is project-level or person-level first, and sends person-level lessons to the user-level instruction file that loads everywhere.
-
-**3. A repeated lesson becomes automation, not a second note.** If the same lesson is already written down somewhere, writing it again has already been proven not to work. The skill greps sibling stores before writing and, on a match, proposes a deterministic hook and cites the earlier entries. Repetition is the signal that instructions are the wrong tool.
-
-**4. Lessons route to where they change behavior.** A saved lesson only matters if it fires at the right moment, so each one is classified:
-
-| Lesson type | Where it goes |
-|---|---|
-| Machine-level or person-level fact (shell quirks, standing preferences) | The user-level instruction file, so every project reads it |
-| Project-specific context gap | That project's lesson store (memory entry or a `## Lessons Learned` line in CLAUDE.md, the project's standing instruction file) |
-| Recurring procedure | A skill under `.claude/skills/` (a reusable how-to the agent loads when needed) |
-| Hard constraint (must ALWAYS / NEVER happen) | A deterministic hook (a small piece of code that runs automatically, so the rule can't be forgotten), preferred over a rules file: code that blocks the action beats an instruction asking nicely |
-| Voice/style preference | The project's style loop, if it has one |
-| Session state, handoff notes, anything dated | The project's handoff or progress doc, never the lesson store |
-| One-off, not generalizable | Discarded, with the reason stated |
-
-**5. The store must shrink as well as grow.** Every retro proposes deletions alongside additions, and pruning is a budget rather than a judgment call: about 20 entries per project, with a fixed eviction order that takes dated session snapshots first. A capped store stays small enough that every entry still gets read and respected. Without pruning, saved lessons become the same noise that caused the issue this skill was created to address.
-
-## The human gate
-
-The agent never edits its own instructions, skills, or hooks silently. Those are proposed as a unified diff and wait for you.
-
-The gate is tiered on purpose. Adding or deleting an entry in a project's persistent memory store is cheap, scoped to one project, and reversible, so the agent does it and reports it in a done-list you can undo by number. Skills, rules, hooks, and instruction files change how the agent behaves everywhere, so those always stop and wait. The line is the file, not the intent: if a project keeps its lessons as a `## Lessons Learned` section in CLAUDE.md rather than as memory entries, those edits wait for you like any other instruction-file change.
-
-That split exists because an approval prompt on every trivial write trains you to approve on reflex, which is exactly when the gate stops protecting the changes that matter. Every proposal still carries an **"In plain terms"** block: one to three sentences stating the concrete moment the session went wrong and what will happen differently next time, readable by any non-technical user.
-
-You accept, reject, or edit. The skill improves your project; you stay the editor of how.
+- Claude Code in an interactive session. The proposal dialog uses the question tool; in `claude -p` the retro prints its proposals, records no decision and offers them again next time.
+- Python 3.10 or later on the path as `python` or `python3`.
+- A `claude` login, for the one model call the session scan makes.
+- Developed and tested on Windows 11; the scripts use no platform-specific calls, but macOS and Linux are untested. The evals need the login file that macOS keeps in the Keychain instead, so they do not run there.
 
 ## Beyond Claude Code
 
-The retro itself is a single prompt file; the scripts beside it (scan, health check, evals) are optional stdlib-only Python helpers, and the loop is model-agnostic: any agent that keeps standing instruction files can run it. Keep the structure (honest review, a bar that permits zero lessons, scope before storage, recurrence into automation, routed lessons, budgeted pruning) and the tiered gate, then swap the routing targets for your tool's equivalents: Cursor's rules files, AGENTS.md for the OpenAI Codex CLI, GEMINI.md for the Gemini CLI, or simply a pinned document you maintain by hand. Conventions move fast, so the durable rule is: lessons go wherever your agent reliably reads standing instructions, and automation goes wherever your tool can enforce a check without being asked.
+The loop is portable even though this implementation is not: an honest review, a bar that permits zero lessons, a recurrence check before any write, lessons routed to the one place they fire, a capped store that shrinks as well as grows, and a human deciding every change. Any agent that keeps standing instruction files can run that loop; swap the targets for your tool's rules files and automation hooks.
 
 ## Versions
 
-Release notes live in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/robertantolin/claude-retro-skill/releases). The current release is v3.0.1. If you are upgrading from v2, read its "Upgrading from v2" section first: the ledger moved and the skill does not migrate it for you.
+Release notes live in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/robertantolin/claude-retro-skill/releases). The current release is 4.0.0. If you are upgrading from 3.x, read its "Upgrading from 3.x" section: the ledger migrates itself, and the retro now asks before every change.
+
+## Contributing and security
+
+Bugs and ideas go to the [issue tracker](https://github.com/robertantolin/claude-retro-skill/issues); see [CONTRIBUTING.md](CONTRIBUTING.md) for how the skill text is tested before it changes. Security problems go through [private reporting](https://github.com/robertantolin/claude-retro-skill/security/advisories/new), as described in [SECURITY.md](SECURITY.md).
+
+Maintained by [Robert Antolin](https://github.com/robertantolin).
 
 ## License
 

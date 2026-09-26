@@ -1,0 +1,8 @@
+{
+  "name": "retro",
+  "version": "4.0.0",
+  "description": "End-of-session retrospective: reviews the session, proposes at most three changes, applies only what you approve, and can undo a run.",
+  "author": { "name": "robertantolin", "url": "https://github.com/robertantolin" },
+  "homepage": "https://github.com/robertantolin/claude-retro-skill",
+  "license": "MIT"
+}

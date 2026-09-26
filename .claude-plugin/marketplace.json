@@ -1,0 +1,12 @@
+{
+  "name": "claude-retro-skill",
+  "owner": { "name": "robertantolin" },
+  "description": "The /retro end-of-session retrospective skill for Claude Code.",
+  "plugins": [
+    {
+      "name": "retro",
+      "source": "./retro",
+      "description": "End-of-session retrospective for Claude Code: reviews the session, proposes at most three changes, and applies only what you approve."
+    }
+  ]
+}

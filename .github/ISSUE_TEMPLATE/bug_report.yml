@@ -1,0 +1,38 @@
+name: Bug report
+description: The retro did something wrong or failed to run
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Skill version
+      description: From CHANGELOG.md or the release you installed
+      placeholder: "4.0.0"
+    validations:
+      required: true
+  - type: input
+    id: claude-version
+    attributes:
+      label: Claude Code version and platform
+      placeholder: "2.1.281 on Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What the retro printed or did, and what you expected. Redact anything personal.
+    validations:
+      required: true
+  - type: textarea
+    id: health
+    attributes:
+      label: Output of `python health.py`
+      render: text
+  - type: checkboxes
+    id: undo
+    attributes:
+      label: Recovery
+      options:
+        - label: I ran `python journal.py undo <run>` and it put things back
+        - label: Undo refused or did not cover the change

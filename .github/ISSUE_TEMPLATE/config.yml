@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/robertantolin/claude-retro-skill/security/advisories/new
+    about: Report privately instead of opening an issue

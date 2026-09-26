@@ -7,6 +7,7 @@ about 10k tokens of fixed context instead of about 70k.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -29,9 +30,14 @@ def _env():
 
 
 def call(model: str, prompt: str, timeout: int = 300) -> str:
-    cmd = ["claude", "-p", *FLAGS, "--model", model]
+    # shell=False with the executable resolved by hand: under shell=True a POSIX shell takes only
+    # the first list item as the command and drops the flags. which() finds claude.cmd on Windows.
+    cmd = [shutil.which("claude") or "claude", "-p", *FLAGS, "--model", model]
+    # CREATE_NO_WINDOW (Windows only): the background scan owns no console, so without it every
+    # claude.cmd call pops a visible console window for its ~7 s lifetime.
     r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", env=_env(), timeout=timeout, shell=True)
+                       errors="replace", env=_env(), timeout=timeout, shell=False,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode != 0:
         raise RuntimeError(f"claude exit {r.returncode}: {r.stderr.strip()[:300]}")
     data = json.loads(r.stdout)
