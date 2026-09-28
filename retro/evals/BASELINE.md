@@ -510,3 +510,7 @@ bullet was left as it was: it is the tuned recipe and the gate shows both paths 
 Shipped text = this round. Proof of the one-dialog behaviour in interactive use is still
 `python evals/card_check.py` after the next live retro with two or more proposals: the golden
 cases run without the question tool, so they exercise only the print-mode and auto-apply paths.
+
+### Live proof, 2026-09-26
+
+Two live retros on the shipped text, inspected from their transcripts. Project A, two proposals (both `rule-skill-hook`): one question-tool call with two questions, each carrying its whole card (627 and 614 characters) and the four options; the cards were printed in the assistant block directly before the call with no tool call between; both approved and applied after the dialog, then Applied and Housekeeping. Project B, one proposal: the over-cap `store-delete` fired for real (store at 21) and was approved; the dialog carried the card (759 characters) but the card was not printed in chat before the call, the residual print skip. `card_check.py` missed the Project A run because that retro was started without the `/retro` slash command (no command marker in the transcript); it keys on that marker.

@@ -1,4 +1,5 @@
-"""For every /retro run since 2026-09-14 across all projects: for each AskUserQuestion
+"""For every retro run since 2026-09-14 across all projects (a run is detected by its
+`journal.py begin` call, so plain-text starts count too): for each AskUserQuestion
 whose header starts with 'Proposal', classify where the matching card text
 ('**Proposal N of M') was emitted relative to the question:
   same-msg     card text block in the same assistant message as the tool call
@@ -26,8 +27,17 @@ for path in files:
                 rows.append(json.loads(line))
             except Exception:
                 pass
-    retro_idx = [i for i, r in enumerate(rows) if r.get("type") == "user" and
-                 "<command-name>/retro</command-name>" in json.dumps(r.get("message", {}).get("content", ""))]
+    # A retro run starts with `journal.py begin` (step 0.2), whether the user typed /retro or
+    # asked in plain words; the slash-command marker alone missed the plain-text starts.
+    def begins_retro(r):
+        if r.get("type") != "assistant":
+            return False
+        for b in r.get("message", {}).get("content", []) or []:
+            if isinstance(b, dict) and b.get("type") == "tool_use" and \
+                    "journal.py begin" in str((b.get("input") or {}).get("command", "")):
+                return True
+        return False
+    retro_idx = [i for i, r in enumerate(rows) if begins_retro(r)]
     if not retro_idx:
         continue
     proj = os.path.basename(os.path.dirname(path)).replace("C--LLM-Projects-Claude-", "")
