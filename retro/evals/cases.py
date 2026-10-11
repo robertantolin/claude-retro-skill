@@ -1,5 +1,5 @@
-"""Nine golden cases as data. Each case: transcript turns, store entries, optional findings
-rows, optional pre-seeded candidates and settings, and the expectations the runner checks.
+"""Ten golden cases as data. Each case: transcript turns, store entries, optional findings
+rows, optional pre-seeded candidates, coach ledger rows and settings, and the expectations the runner checks.
 Synthetic throughout: no real names or paths."""
 
 STORE_BASE = {
@@ -135,10 +135,11 @@ CASES = {
                    "ledger_decisions": ["no-decision"], "diff_file": True},
     },
     "over-cap": {
-        # A clean session, but the store holds 21 entries, one over the cap. The retro must
-        # propose a store-delete on its own (no lesson to pair it with) and the run is not empty.
-        # In print mode the delete gets no decision, so the store is untouched and the row says
-        # no-decision with kind store-delete.
+        # A clean session, but the store holds 21 entries, one over the cap. The retro must run
+        # the store review and raise a review proposal (a store-write consolidation or refinement,
+        # or a rule-skill-hook automation), never a store-delete, and the run is not empty. The 18
+        # filler lessons share one subject, so a consolidation is the expected find. In print mode
+        # the proposal gets no decision, so the store is untouched and the row says no-decision.
         "turns": [
             ("user", "Bump the dependency versions and run the tests."),
             ("assistant", "Bumped four packages, all 212 tests pass."),
@@ -148,6 +149,28 @@ CASES = {
                                    for i in range(1, 19)}},
         "settings": {"approve_always": []},
         "expect": {"empty_retro": False, "new_entries": 0, "quotes": [], "store_unchanged": True,
-                   "ledger_decisions": ["no-decision"], "ledger_kinds": ["store-delete"], "diff_file": True},
+                   "ledger_decisions": ["no-decision"], "ledger_kinds_any": ["store-write", "rule-skill-hook"],
+                   "ledger_kinds_absent": ["store-delete"], "diff_file": True},
+    },
+    "mod-signals": {
+        # A clean session, but the coach mod's ledger shows fan-out misses (turns that read 10 or
+        # more files with no subagent) in four windows of this project. The repeat earns one
+        # mechanism proposal (a hook, a mod change or a nudge), never a global-line sentence.
+        "turns": [
+            ("user", "Bump the dependency versions and run the tests."),
+            ("assistant", "Bumped four packages, all 212 tests pass."),
+            ("user", "Great."),
+        ],
+        "store": STORE_BASE,
+        "settings": {"approve_always": []},
+        "coach_log": [
+            ("a1b2c3", "2026-09-02T10:15", "{slug}", "fanout-miss", "11", "line", "none"),
+            ("a1b2c3", "2026-09-02T11:40", "{slug}", "fanout-miss", "16", "none", "none"),
+            ("d4e5f6", "2026-09-03T14:05", "{slug}", "fanout-miss", "19", "line", "none"),
+            ("a7b8c9", "2026-09-05T09:30", "{slug}", "fanout-miss", "23", "line", "none"),
+            ("e1f2a3", "2026-09-07T16:20", "{slug}", "fanout-miss", "27", "line", "none"),
+        ],
+        "expect": {"empty_retro": False, "new_entries": 0, "quotes": [], "mechanism": True,
+                   "ledger_kinds_absent": ["global-line"], "diff_file": True},
     },
 }

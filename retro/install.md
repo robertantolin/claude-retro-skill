@@ -5,7 +5,7 @@
 3. On the first run the skill creates `~/.claude/retro/` with default settings (no kind of change is approved automatically) and asks whether to scan your session history: last 90 days, everything, or skip. The scan reads your transcripts under `~/.claude/projects/` and sends your messages to the model; it runs in the background and its progress is in `~/.claude/retro/scan.log`.
 4. The history scan is asked on the first run; approve-always is never asked in a proposal dialog. Say "retro settings" in any session to see or change every setting.
 
-Undo the last retro: say "undo retro". Restore one deleted file from the last retro: say "restore <file name>". Metrics: say "retro metrics".
+Undo the last retro: say "undo retro". Restore one deleted file from the last retro: say "restore <file name>". Metrics: say "retro metrics". Review a lesson store for merges, rewrites and automations: say "review the store".
 
 Where `python` is not on the path, use `python3`; the skill's commands accept either.
 

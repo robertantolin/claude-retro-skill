@@ -68,6 +68,10 @@ def build_home(case, skill_src: Path):
                                      lesson.format(slug=slug), evidence, conf))
     if rows:
         scan.save_findings(cfg / "retro" / "findings.tsv", "2026-09-01T09:00", rows)
+    if case.get("coach_log"):
+        (cfg / "retro" / "coach-log.tsv").write_text(
+            "".join("\t".join(r).format(slug=slug) + "\n" for r in [scan.COACH_COLS, *case["coach_log"]]),
+            encoding="utf-8")
     sid = str(uuid.uuid4())
     synth.write_transcript(cfg, str(work), sid, case["turns"])
     return root, home, cfg, store, slug, sid, work
@@ -168,6 +172,10 @@ def grade(case, output: str, store: Path, cfg: Path, before: set, judge_model: s
                                          for fid in exp["findings_handled"])
     if exp.get("ledger_kinds"):
         checks["ledger_kinds"] = set(exp["ledger_kinds"]) <= {r["kind"] for r in rows}
+    if exp.get("ledger_kinds_any"):
+        checks["ledger_kinds_any"] = bool(set(exp["ledger_kinds_any"]) & {r["kind"] for r in rows})
+    if exp.get("ledger_kinds_absent"):
+        checks["ledger_kinds_absent"] = not (set(exp["ledger_kinds_absent"]) & {r["kind"] for r in rows})
     if exp.get("store_unchanged"):
         # print mode records no decision, so a proposed delete must leave every entry in place
         checks["store_unchanged"] = after == before

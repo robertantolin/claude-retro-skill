@@ -61,7 +61,7 @@ def findings_status(findings: Path, store=None):
     _, rows = scan.load_findings(findings)
     n = 0
     for r in rows:
-        # dormant rows are delete candidates (scan.py --open lists them), not findings for the table
+        # dormant rows are review candidates (scan.py --open lists them), not findings for the table
         if r["status"] != "open" or r["type"] == "dormant":
             continue
         if store is not None and r["store"] not in (store, "global"):

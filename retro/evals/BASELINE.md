@@ -1,5 +1,14 @@
 # Golden eval baseline
 
+## Scan model spike (which model classifies corrections and matches lessons)
+
+Throwaway scripts over the 596 user messages of the 52 pre-rewrite retro sessions; ground truth hand-adjudicated: 23 true corrections, 20 revision requests, 28 neither. The old retros' own cited corrections were unusable as labels (4 of 21 real).
+
+- Correction recall: Haiku 18/23, Sonnet 21/23, Opus 22/23. Precision on strict corrections 45-51% for all three (the correction-versus-revision line is a prompt-definition problem).
+- Opus invented 18 message ids in short sessions; ids must be validated. A keyword prefilter kept only 11/23 corrections, so none is used.
+- Lesson matching without a gist: Opus most accurate; Haiku over-matched with high confidence to generic constitution lines; Sonnet too literal. Sonnet matched well when given the retro gist.
+- Shipped choice: Sonnet classifies with the preceding assistant turn and an explicit revision exclusion; Opus (or Sonnet plus gist) matches; no prefilter.
+
 ## v3 result, 2026-09-13
 
 Eight cases, three runs each, against the rewritten v3 `SKILL.md`.
@@ -471,7 +480,7 @@ Parity on both wording-sensitive cases, so the new sentences did not reopen the 
 problem. Three eval streams ran side by side, staggered by three seconds; results files did not
 collide.
 
-### Full gate on the shipped text
+### Full gate on the third variant
 
 Results file: `evals/results/2026-09-25T02-33-21.json`, nine cases, three runs each, Sonnet.
 
@@ -514,3 +523,107 @@ cases run without the question tool, so they exercise only the print-mode and au
 ### Live proof, 2026-09-26
 
 Two live retros on the shipped text, inspected from their transcripts. Project A, two proposals (both `rule-skill-hook`): one question-tool call with two questions, each carrying its whole card (627 and 614 characters) and the four options; the cards were printed in the assistant block directly before the call with no tool call between; both approved and applied after the dialog, then Applied and Housekeeping. Project B, one proposal: the over-cap `store-delete` fired for real (store at 21) and was approved; the dialog carried the card (759 characters) but the card was not printed in chat before the call, the residual print skip. `card_check.py` missed the Project A run because that retro was started without the `/retro` slash command (no command marker in the transcript); it keys on that marker.
+
+## Post-edit result, 2026-10-09 (mechanism alternative on cards, three-word recurrence check)
+
+Edits under test: step 4 cards for `store-write` and `global-line` gain a fifth bullet "Mechanism instead"; when it names a mechanism, the question adds that line and its options become Approve, Approve the mechanism instead, Deny: not worth a change, Deny: already covered (the tool takes four options, so "Deny: wrong fix" gives way and arrives as Other words); approving the mechanism rewrites the proposal as `rule-skill-hook` with refine count +1. Step 2's one-phrase recurrence search is replaced by `recur.py` (three content words searched separately; a file holding two of three counts as existing), with `tests/test_recur.py`. Model Sonnet; Claude Code auto-updated to 2.1.295 partway through.
+
+Not shipped: the first-sighting parking rule (a `store-write` with "none fits" and no prior sighting goes to Candidates until it repeats). On a variant carrying it, one-correction 0/3 (`new_entries`, `00-13-21`) and no-decision 0/3 (`diff_file`, `ledger_decisions`, `00-13-24`): the streams show it parking every first correction as designed, which contradicts what those cases expect. Shipping it needs a ruling on the cases first.
+
+### Micro-tests, five runs each, raw streams read
+
+| Case | Control | Variant |
+|---|---|---|
+| one-correction | 5/5 (`00-01-25`) | 5/5 (`00-01-28`); `recur.py` called in 5/5, Mechanism bullet in 4/5 (run 2, approve-always path, put the reasoning in Insight instead) |
+| no-decision | 4/5 (`00-07-41`, one report skip) | 5/5 (`00-01-32`); `recur.py` 5/5, bullet 5/5 |
+| recurrence | 3/5 (`00-07-44`; `cites_existing` x1, `empty_retro` x1) | 3/5 (`00-07-48`; `cites_existing` x2, lesson described, not named) |
+| over-cap (new CLI) | 4/5 (`00-32-51`) | 5/5 (`00-32-54`) |
+| findings-open (new CLI) | 4/5 (`00-32-57`, `findings_handled`) | 5/5 (`00-38-21`) |
+| hard-number (new CLI) | 5/5 (`00-38-28`) | 5/5 (`00-38-24`) |
+
+### Full gate
+
+`evals/results/2026-10-09T00-13-18.json`: the CLI binary was missing during its update, so 10 runs died with "claude.exe is not recognized" (one-correction 1, two-corrections 3, recurrence 3, findings-open 2); those cases were rerun.
+
+| Case | Runs passing | Failing checks |
+|---|---|---|
+| self-caught | 3/3 | none |
+| one-correction | 2/2 valid + 3/3 rerun (`00-44-44`) | none |
+| two-corrections | 3/3 rerun (`00-27-05`) | none |
+| recurrence | 2/3 rerun (`00-27-08`) | cites_existing (paraphrase, known) |
+| findings-open | 1/1 valid + 2/3 rerun (`00-27-11`) | empty_retro (findings resolved correctly, then the empty-run sentence) |
+| candidate-confirms | 3/3 | none |
+| hard-number | 2/3 | ledger_line, ledger_decisions |
+| no-decision | 2/3 | quotes_corrections (report skip, known) |
+| over-cap | 2/3 | ledger_line, ledger_decisions, ledger_kinds |
+
+The hard-number and over-cap misses are one new mode, seen on the control text too (`00-32-51` run 2): the model says the question tool "isn't loaded here", asks for approval in chat and writes no ledger row. It appeared only after the CLI update; backlog for the unavailable-question-tool bullet. Real-data guard untouched in every run.
+
+## Post-edit result, 2026-10-10 (store review replaces the over-cap delete)
+
+Edits under test: a store over cap no longer gets a `store-delete`. New `### 4a. Store review`: when findings leave a slot free, the retro dispatches one opus subagent with the prompt in `store-review.md`, which returns up to that many proposals (automation as `rule-skill-hook`; consolidation or refinement as `store-write`), numbered after the findings' proposals and asked in the same single question call. A merge lists every absorbed file in What-changes, takes a new file name (the journal cannot undo a run that writes and deletes one path), moves absorbed files through `journal.py delete --kind store-write`, and closes their dormant rows as `resolved:merged`. Review ledger rows carry `--finding-id review`, and `ledger.py` leaves those rows out of the raised-bar count (`tests/test_ledger.py`). Step 8 gains "review the store". The dormant block is labelled "review candidates". Golden case `over-cap` now expects `ledger_kinds_any` store-write or rule-skill-hook and `ledger_kinds_absent` store-delete (new checks in `run_evals.py`). Model Sonnet for the retro, opus for the review; Claude Code 2.1.295 to 2.1.296.
+
+### Micro-tests, raw streams read
+
+| Text | over-cap (new expectations) | no-decision |
+|---|---|---|
+| Control, 2026-10-09 text | 0/5 (`10-09T17-49-27`): store-delete proposed in 4, asked in chat in 1 | 5/5 (`08-49-50`), 2/5 (`09-02-57`, report skip x3), 3/5 (`09-11-08`) |
+| First variant, review paragraph inside step 4 | 5/5 (`10-09T17-49-30`): opus review dispatched 5/5, 18-file merge 5/5 | 1/3 in its gate (`10-09T18-02-37`) |
+| Second variant, reviewer fixes, still inside step 4 | 4/5 (`10-09T20-02-43`, asked in chat x1); 5/5 (`08-49-56`) | 0/3 in its gate (`10-09T20-14-53`), 2/5 (`08-49-53`) |
+| Probe A: second variant with the old step-4 paragraph | n/a | 5/5 (`09-03-00`) |
+| Probe B: second variant without the step-8 request | n/a | 2/5 (`09-03-03`) |
+| Third variant: review moved to step 4a, one pointer sentence in step 4 | 4/4 valid (`09-11-05`, run 5 died while the CLI updated itself) | 4/5 (`09-11-02`, report skip x1) |
+
+The review paragraph sitting inside step 4's main flow cost no-decision runs (report skip and asked-in-chat both rose) although that case never reaches the review; the bisect put it on that paragraph, not on the step-8 request. Moving the mechanics into their own conditional subsection brought no-decision back to control level. The control itself ranged 2/5 to 5/5 on no-decision within one morning, so compare variants only against a control run in the same minute.
+
+### Full gate on the third variant
+
+Run as nine parallel processes, one per case, started three seconds apart: about 15 minutes instead of 45, no collisions. Results `2026-10-10T09-21-14` to `09-21-39`, one file per case.
+
+| Case | Runs passing | Failing checks |
+|---|---|---|
+| self-caught | 3/3 | none |
+| one-correction | 3/3 | none |
+| two-corrections | 3/3 | none |
+| recurrence | 2/3 | cites_existing (paraphrase, known) |
+| findings-open | 3/3 | none |
+| candidate-confirms | 3/3 | none |
+| hard-number | 2/3 | ledger_line, ledger_decisions (asked in chat, known) |
+| no-decision | 2/3 | quotes_corrections (report skip, known) |
+| over-cap | 3/3 | none |
+
+24 of 27, parity with the 2026-10-09 gate. Over-cap streams: the opus review ran in every run and proposed the 18-file merge, sometimes with a refinement of one entry; no store-delete in any run. The subagent wrote every absorbed file name out; the retro sometimes shortened 18 sequential names to "01 through 18" on the printed card. One real-data guard line read False during the first variant's micro-test: a live retro in another project wrote `findings.tsv` at that minute (its journal names that project); every other run left real data untouched.
+
+### Shipped text: final-review fixes on the third variant
+
+A second self-review, one end-to-end read, found defects the gate cannot see. Fixed: a denied review proposal came back every run (4a now runs `ledger.py denied-review --project <project>` and passes the titles; the review skips them); `scan.py --resolve review` failed (now a no-op that exits 0); dormant rows stayed open for files a review rewrote (now closed as `resolved:reviewed`); review proposals were exempt from the question when their kind sat on approve-always, so an 18-file merge could apply unasked (now always asked); step 6 pointed at step 4; the README still promised a cap delete. `store-review.md` reports kinds held back by a raised bar. Tests 118 passed (`test_denied_review_titles`, `test_resolve_review_is_a_no_op`). Not fixed, older: `ledger.py pending()` keeps returning a no-decision row after a later Drop row decides it.
+
+One parallel wave, `2026-10-10T09-38-*`, over-cap and no-decision at five runs, the rest at three, with a no-decision control on the third variant in the same minute:
+
+| Case | Runs passing | Failing checks |
+|---|---|---|
+| self-caught | 3/3 | none |
+| one-correction | 3/3 | none |
+| two-corrections | 3/3 | none |
+| recurrence | 2/3 | cites_existing (paraphrase, known) |
+| findings-open | 3/3 | none |
+| candidate-confirms | 3/3 | none |
+| hard-number | 3/3 | none |
+| no-decision | 3/5 (control 2/5) | report skip x1, asked in chat x1 (both known) |
+| over-cap | 5/5 | none; `denied-review` called in 5/5, review rows carry `review` |
+
+## Post-edit result, 2026-10-10 (mod signals from the coach ledger)
+
+Edits under test: `scan.py --open` gains an optional third block, `Mod signals`, read from `retro/coach-log.tsv` (the coach mod's ledger, one row per nudge or fan-out miss; a fan-out miss is a turn where Claude read 10 or more files itself and dispatched no subagent) and printed only when the file exists, parses and holds rows. Absent, empty, header-only or malformed, the `--open` output is byte-identical to before (`tests/test_mod_signals.py`; 124 tests pass). SKILL.md gains one conditional subsection, 4b, that turns a signal seen in 3 or more windows into one mechanism proposal (`rule-skill-hook` or `other-file`, never `global-line`). New golden case `mod-signals`: a clean session plus a ledger with five fan-out misses across four windows; expects a mechanism, no `global-line`, a diff file. `build_home` writes the ledger only for that case; the real-data guard does not cover the ledger because live sessions append to it at any moment. Model Sonnet.
+
+First wording (variant A, not shipped): one extra line in step 2's finding list plus 4b. Full gate `2026-10-10T16-07-52` (3 runs): eight existing cases 3/3, recurrence 2/3 (cites_existing, known), no-decision 0/3 (report skip x3), mod-signals 1/3 (one report skip, one proposal judged not a mechanism). Micro-tests in sequence: one-correction 5/5 vs control 5/5; no-decision 2/5 (`16-21-06`, report skip x3) vs control 3/5 (`16-26-33`, one partial report); mod-signals 3/5 (`16-31-12`; one report skip, one run found nothing to change). The step-2 line sits in the main flow of a step, the placement that cost no-decision runs on 2026-10-09: 6 of 8 variant runs skipped the report against 1 of 5 for the control.
+
+Shipped wording (variant B): nothing added to step 2; the whole rule lives in 4b. Three streams side by side, `2026-10-10T17-01-*`, five runs each:
+
+| Case | Runs passing | Failing checks |
+|---|---|---|
+| no-decision, variant B | 4/5 (`17-01-25`) | ledger_decisions, ledger_line x1 (review and proposal printed, no ledger row); no report skip in 5 |
+| no-decision, control | 3/5 (`17-01-28`) | quotes_corrections x2 (report skips) |
+| mod-signals, variant B | 3/5 (`17-01-31`) | diff_file, ledger_line x2: one run named the finding, quoted its four windows and read counts, then chose No action because the sandbox home has no mods folder, rules folder or settings file to build on; one run proposed the hook but wrote its files under an unexpanded `~` path (the wrong-home miss first recorded on 09-25) |
+
+Variant B is above the same-minute control on the flaky case with no report skips, so the conditional-subsection placement holds again. The new case's two misses are not wording skips: a sandbox home with a `mods` folder and a settings file would remove the first, and the tilde path is a known shell flake. Both are fixture follow-ups, not text changes.

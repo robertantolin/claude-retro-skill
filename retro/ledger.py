@@ -94,9 +94,11 @@ def append_row(cfg: Path, run_id, project, proposal, finding_id, kind, decision,
         f.write("\t".join(str(row[c]) for c in COLS) + "\n")
     # Denials count per kind within one project. A kind declined in one project can be the right
     # one in another: on 2026-09-17 one denial in project A plus two in project B switched
-    # lesson files off everywhere. Approve-always stays per kind across projects.
-    if kind in settings.KINDS and decision in ("approve-once", "approve-always", "deny"):
+    # lesson files off everywhere. Approve-always stays per kind across projects. Store-review
+    # proposals (finding id "review") never count: denying a merge must not switch off new lessons.
+    if kind in settings.KINDS and decision in ("approve-once", "approve-always", "deny") and finding_id != "review":
         judged = [r for r in load_rows(cfg) if r["kind"] == kind and r["project"] == project
+                  and r["finding_id"] != "review"
                   and r["decision"] in ("approve-once", "approve-always", "deny")]
         tail = judged[-RAISED_AFTER:]
         if len(tail) == RAISED_AFTER and all(r["decision"] == "deny" for r in tail):
@@ -118,6 +120,12 @@ def recent(cfg: Path, project: str, hours: int = 24):
 
 def pending(cfg: Path, project: str):
     return [r for r in load_rows(cfg) if r["project"] == project and r["decision"] == "no-decision"]
+
+
+def denied_review(cfg: Path, project: str):
+    """Titles of this project's denied store-review proposals, so the next review does not raise them again."""
+    return [t for r in load_rows(cfg) if r["project"] == project and r["finding_id"] == "review"
+            and r["decision"] == "deny" for t in [title_of(cfg, r["run_id"], r["proposal"])] if t]
 
 
 def mark_reverted(cfg: Path, run_id: str) -> int:
@@ -168,6 +176,8 @@ def main(argv=None):
     a3.add_argument("--hours", type=int, default=24)
     a4 = sub.add_parser("pending")
     a4.add_argument("--project", required=True)
+    a5 = sub.add_parser("denied-review")
+    a5.add_argument("--project", required=True)
     a = ap.parse_args(argv)
     cfg = a.claude_dir or claude_dir()
     if a.cmd == "append":
@@ -187,6 +197,8 @@ def main(argv=None):
         bad = validate(cfg)
         print("ledger OK" if not bad else "\n".join(bad))
         return 1 if bad else 0
+    elif a.cmd == "denied-review":
+        print("\n".join(denied_review(cfg, a.project)) or "none")
     elif a.cmd in ("recent", "pending"):
         rows = recent(cfg, a.project, a.hours) if a.cmd == "recent" else pending(cfg, a.project)
         for r in rows:

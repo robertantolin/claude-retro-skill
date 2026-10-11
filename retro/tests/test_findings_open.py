@@ -91,9 +91,15 @@ def test_open_cli_prints_both_lists(tmp_path, capsys):
     assert "F0001\trecur\thigh\tmem:proj-a/one\tfix it" in out
     assert "F0004\tcandidate\tmedium\tcand:rework-loop/memo" in out
     assert "F0002" not in out and "F0005" not in out
-    assert "Dormant lessons in proj-a (no match in 60 days; delete candidates):" in out
+    assert "Dormant lessons in proj-a (no match in 60 days; review candidates):" in out
     assert "F0006\tmem:proj-a/quiet" in out
     assert "F0007" not in out and "F0009" not in out and "F0010" not in out
     (tmp_path / "retro" / "findings.tsv").unlink()
     assert scan.main(["--claude-dir", str(tmp_path), "--open", "proj-a"]) == 0
     assert capsys.readouterr().out.count("none") == 2
+
+
+def test_resolve_review_is_a_no_op(tmp_path, capsys):
+    # store-review proposals log --finding-id review; resolving that id must not fail the step
+    assert scan.main(["--claude-dir", str(tmp_path), "--resolve", "review", "--status", "denied"]) == 0
+    assert "nothing to resolve" in capsys.readouterr().out

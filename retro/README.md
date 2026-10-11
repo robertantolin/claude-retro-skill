@@ -2,7 +2,9 @@
 
 Privacy first. The skill scans your Claude Code session transcripts. For the session you are closing it sends the model your own messages, a short tail (up to 600 characters) of Claude's reply before each one, and the one-line titles of your existing lessons, global instruction bullets, and rules files. It does not send tool output or file contents. The optional one-time history scan does the same for past sessions in the range you choose, plus the text of past retro replies so it can learn how you answered them; you can bound that range or skip it. Everything it stores lives under `~/.claude/retro/`.
 
-A session-end retrospective skill for Claude Code. It reads what went wrong in the session you are closing, checks whether the lesson already exists, and proposes at most three changes, all decided in one dialog that carries each proposal's card: approve, deny with a one-line reason, or refine. Nothing is written or deleted without that decision unless you have set the kind to approve-always through "retro settings". A store that has grown past its cap of 20 lessons gets a delete proposal on its own. Every write is journaled and can be undone with one command.
+Optional input: when a coach mod writes `~/.claude/retro/coach-log.tsv` (one row per nudge or fan-out miss, a turn where Claude read 10 or more files itself and dispatched no subagent), the retro counts each signal per project and overall, and a signal seen in 3 or more windows earns one mechanism proposal (a hook, a mod change or a nudge) rather than a new instruction line. The retro only reads that file; when it is absent, empty or malformed the retro runs exactly as it does without it.
+
+A session-end retrospective skill for Claude Code. It reads what went wrong in the session you are closing, checks whether the lesson already exists, and proposes at most three changes, all decided in one dialog that carries each proposal's card: approve, deny with a one-line reason, or refine. Nothing is written or deleted without that decision unless you have set the kind to approve-always through "retro settings". A store that has grown past 20 lessons gets a review that proposes merges, rewrites and automations, never deletions. Every write is journaled and can be undone with one command.
 
 ## What it does
 
@@ -10,7 +12,8 @@ A session-end retrospective skill for Claude Code. It reads what went wrong in t
 2. Prints a short report: session review, a findings table, candidates, proposals, housekeeping.
 3. Asks every proposal in one dialog, each question holding its own card; a denial picks its reason from the options. Refine rewrites the proposal and asks again. Nothing is applied until every answer is in. A kind of change you deny three times in a row in one project stops being proposed in that project and is logged instead; say "retro settings" to turn it back on.
 4. Applies approved changes through a journal so `python journal.py undo <run>` reverses them. Deleted files go to a trash folder for 30 days.
-5. Keeps outcome metrics: which lessons recurred after being written, which kinds of proposal you deny, how often candidates confirm. `python health.py --metrics`.
+5. Reviews a lesson store that grows past 20 entries instead of deleting from it: a review subagent proposes automations (a lesson becomes a hook, rule or script), merges of overlapping lessons and shorter rewrites, asked in the same dialog. Say "review the store" to run it at any size.
+6. Keeps outcome metrics: which lessons recurred after being written, which kinds of proposal you deny, how often candidates confirm. `python health.py --metrics`.
 
 ## Install
 
@@ -18,7 +21,7 @@ See `install.md`. Requires Claude Code with the question tool (interactive sessi
 
 ## Files
 
-`SKILL.md` the procedure; `scan.py` classification and history scan; `settings.py`, `ledger.py`, `journal.py`, `candidates.py` state under `~/.claude/retro/`; `health.py` report and metrics; `evals/` golden cases; `tests/` unit tests (`python -m pytest tests -q`).
+`SKILL.md` the procedure; `store-review.md` the store review subagent's prompt; `scan.py` classification and history scan; `settings.py`, `ledger.py`, `journal.py`, `candidates.py` state under `~/.claude/retro/`; `health.py` report and metrics; `recur.py` the recurrence check (does a lesson already exist in other words); `evals/` golden cases; `tests/` unit tests (`python -m pytest tests -q`).
 
 ## Evidence bar for candidates
 

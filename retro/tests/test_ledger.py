@@ -94,6 +94,19 @@ def test_denials_spread_over_projects_do_not_raise_a_bar(tmp_path):
     assert settings.load(tmp_path)["raised_bar"] == {}
 
 
+def test_store_review_denials_do_not_raise_a_bar(tmp_path):
+    # Decided 2026-10-09: saying no to a store-review merge must not switch off new lessons
+    for n in (1, 2, 3):
+        row(tmp_path, proposal=n, finding_id="review", kind="store-write", decision="deny")
+    assert not settings.is_raised(tmp_path, "store-write", "P")
+    # review rows are skipped, so two ordinary denials around them still need a third
+    row(tmp_path, proposal=4, kind="store-write", decision="deny")
+    row(tmp_path, proposal=5, kind="store-write", decision="deny")
+    assert not settings.is_raised(tmp_path, "store-write", "P")
+    row(tmp_path, proposal=6, kind="store-write", decision="deny")
+    assert settings.is_raised(tmp_path, "store-write", "P")
+
+
 def test_cli_append_announces_a_raised_bar(tmp_path, capsys):
     base = ["--claude-dir", str(tmp_path), "append", "--run-id", "r", "--project", "P", "--finding-id", "none",
             "--kind", "store-write", "--decision", "deny", "--proposal"]
@@ -118,6 +131,19 @@ def test_title_of_reads_proposal_md(tmp_path):
     (d / "1.md").write_text("# Proposal 1 of 2: Search past sessions with the tool that works\n\n- What changes: x\n")
     assert ledger.title_of(tmp_path, "r1", 1) == "Search past sessions with the tool that works"
     assert ledger.title_of(tmp_path, "r1", 9) == ""
+
+
+def test_denied_review_titles(tmp_path, capsys):
+    d = tmp_path / "retro" / "proposals" / "r1"
+    d.mkdir(parents=True)
+    (d / "1.md").write_text("# Proposal 1 of 2: Merge the deploy notes into one\n")
+    (d / "2.md").write_text("# Proposal 2 of 2: Record the retry cap\n")
+    row(tmp_path, proposal=1, finding_id="review", decision="deny")
+    row(tmp_path, proposal=2, finding_id="F0001", decision="deny")
+    row(tmp_path, project="Q", proposal=1, finding_id="review", decision="deny")
+    assert ledger.denied_review(tmp_path, "P") == ["Merge the deploy notes into one"]
+    assert ledger.main(["--claude-dir", str(tmp_path), "denied-review", "--project", "Z"]) == 0
+    assert capsys.readouterr().out.strip() == "none"
 
 
 def test_validate_migrates_old_ledger(tmp_path):

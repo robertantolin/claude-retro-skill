@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import re
+import statistics
 import subprocess
 import sys
 import time
@@ -28,6 +29,7 @@ import transcripts as T  # noqa: E402
 
 FINDINGS_COLS = ["id", "found", "store", "session", "type", "lesson", "evidence", "confidence", "status", "resolved", "reason"]
 DECISION_COLS = ["session", "retro_at", "store", "proposed", "decision", "reply_excerpt"]
+COACH_COLS = ["run_id", "timestamp", "project", "signal", "count", "action", "matched_lesson"]
 DORMANT_DAYS = 60
 FINDING_STATUSES = ("open", "denied", "no-decision")
 FINDING_STATUS_PREFIXES = ("resolved:", "deferred:")
@@ -289,13 +291,45 @@ def set_status(cfg: Path, fid: str, status: str, reason: str = "") -> bool:
 def open_findings(cfg: Path, project: str):
     """The retro's step 2 list: open recur and candidate findings for a project and for global. The
     second list is the project's dormant lessons whose lesson has not matched a correction since the
-    dormant row was written; a store-delete at cap takes its entry from there."""
+    dormant row was written; the store review reads them as consolidation or refinement candidates."""
     _, rows = load_findings(cfg / "retro" / "findings.tsv")
     open_rows = [r for r in rows if r["status"] == "open" and r["type"] != "dormant"
                  and r["store"] in (project, "global")]
     dormant = [r for r in rows if r["type"] == "dormant" and r["status"] == "open" and r["store"] == project
                and not any(x["type"] == "recur" and x["lesson"] == r["lesson"] and x["found"] > r["found"] for x in rows)]
     return open_rows, dormant
+
+
+def mod_signals(cfg: Path):
+    """Optional input: the coach mod's ledger, one row per nudge or fan-out miss. One summary per
+    (project, signal), then one per signal overall. An absent, empty or malformed ledger gives []."""
+    try:
+        lines = (cfg / "retro" / "coach-log.tsv").read_text(encoding="utf-8-sig", errors="replace").splitlines()
+    except OSError:
+        return []
+    if not lines or lines[0].split("\t") != COACH_COLS:
+        return []
+    groups = {}
+    for line in lines[1:]:
+        f = line.split("\t")
+        if len(f) != len(COACH_COLS):
+            continue
+        try:
+            n = int(f[4])
+        except ValueError:
+            continue
+        for key in ((f[2], f[3]), ("overall", f[3])):
+            groups.setdefault(key, []).append((f[0], f[1][:10], n))
+    out = []
+    for (project, signal), rs in sorted(groups.items(), key=lambda kv: (kv[0][0] == "overall", kv[0])):
+        days = [d for _, d, _ in rs]
+        row = {"project": project, "signal": signal, "rows": len(rs), "windows": len({r for r, _, _ in rs}),
+               "first": min(days), "last": max(days)}
+        if signal == "fanout-miss":
+            counts = [n for _, _, n in rs]
+            row.update(min=min(counts), median=statistics.median(counts), max=max(counts))
+        out.append(row)
+    return out
 
 
 def match(item, index, model: str):
@@ -524,16 +558,27 @@ def main(argv=None):
             print(f"{r['id']}\t{r['type']}\t{r['confidence']}\t{r['lesson']}\t{r['evidence']}")
         if not open_rows:
             print("none")
-        print(f"Dormant lessons in {a.open} (no match in {DORMANT_DAYS} days; delete candidates):")
+        print(f"Dormant lessons in {a.open} (no match in {DORMANT_DAYS} days; review candidates):")
         for r in dormant:
             print(f"{r['id']}\t{r['lesson']}")
         if not dormant:
             print("none")
+        signals = mod_signals(cfg)
+        if signals:
+            print("Mod signals from the coach ledger (per project and signal, then overall):")
+        for r in signals:
+            reads = f"\treads min {r['min']} median {r['median']:g} max {r['max']}" if "min" in r else ""
+            print(f"{r['project']}\t{r['signal']}\trows {r['rows']}\twindows {r['windows']}\t"
+                  f"{r['first']} to {r['last']}{reads}")
         return 0
     if a.resolve:
         if not a.status:
             print("--resolve needs --status", file=sys.stderr)
             return 2
+        if a.resolve == "review":
+            # store-review proposals log this id in the ledger; they have no row in findings.tsv
+            print("review proposals carry no finding; nothing to resolve")
+            return 0
         try:
             ok = set_status(cfg, a.resolve, a.status, a.reason)
         except ValueError as e:
