@@ -52,7 +52,15 @@ def begin(cfg: Path, project: str) -> str:
 
 
 def _read(path: Path):
-    return path.read_text(encoding="utf-8", errors="replace") if path.exists() else None
+    # newline="" keeps CRLF/LF as on disk, so undo writes back the same bytes.
+    return path.read_text(encoding="utf-8", errors="replace", newline="") if path.exists() else None
+
+
+def _same(cur, want_sha) -> bool:
+    """cur hashes to want_sha, exactly or with line endings folded (journals from before "exact")."""
+    if cur is None:
+        return want_sha is None
+    return want_sha in (sha(cur), sha(cur.replace("\r\n", "\n").replace("\r", "\n")))
 
 
 def snapshot(cfg: Path, run_id: str, path: Path, kind: str, proposal):
@@ -60,7 +68,7 @@ def snapshot(cfg: Path, run_id: str, path: Path, kind: str, proposal):
     before = _read(Path(path))
     j["writes"].append({"path": str(Path(path)), "kind": kind, "proposal": int(proposal),
                         "before": before, "before_sha": None if before is None else sha(before),
-                        "after_sha": None, "deleted": False, "trash": None})
+                        "after_sha": None, "deleted": False, "trash": None, "exact": True})
     _save(cfg, j)
 
 
@@ -87,7 +95,8 @@ def delete(cfg: Path, run_id: str, path: Path, kind: str, proposal) -> Path:
     before = _read(path)
     shutil.move(str(path), str(dest))
     j["writes"].append({"path": str(path), "kind": kind, "proposal": int(proposal), "before": before,
-                        "before_sha": sha(before), "after_sha": None, "deleted": True, "trash": str(dest)})
+                        "before_sha": sha(before), "after_sha": None, "deleted": True, "trash": str(dest),
+                        "exact": True})
     _save(cfg, j)
     return dest
 
@@ -97,23 +106,34 @@ def undo(cfg: Path, run_id: str) -> list:
     if j.get("reverted_at"):
         raise RuntimeError(f"run {run_id} already reverted")
     todo = []
-    for w in j["writes"]:
+    live = [w for w in j["writes"] if not w.get("restored")]
+    # Only a path's newest write is checked against disk; earlier writes in the run
+    # were overwritten by it, and undo replays them newest first.
+    # A peer's edit between two writes shows as a broken chain: refuse rather than wipe it.
+    newest = {w["path"]: i for i, w in enumerate(live)}
+    prev = {}
+    for i, w in enumerate(live):
         p = Path(w["path"])
-        if w.get("restored"):
-            continue
-        if w["deleted"]:
+        if w["path"] in prev:
+            older = prev[w["path"]]
+            left = None if older["deleted"] else (older["after_sha"] or older["before_sha"])
+            if left != w["before_sha"]:
+                raise RuntimeError(f"refused: {p} changed between two of the retro's writes")
+        prev[w["path"]] = w
+        if w["deleted"] and not Path(w["trash"]).exists():
+            raise RuntimeError(f"refused: trash copy for {p} is missing")
+        if newest[w["path"]] != i:
+            pass
+        elif w["deleted"]:
             if p.exists():
                 raise RuntimeError(f"refused: {p} exists again; restore it by hand")
-            if not Path(w["trash"]).exists():
-                raise RuntimeError(f"refused: trash copy for {p} is missing")
         else:
             cur = _read(p)
-            cur_sha = None if cur is None else sha(cur)
             if w["after_sha"] is None:
-                if cur_sha == w["before_sha"]:
+                if _same(cur, w["before_sha"]):
                     continue
                 raise RuntimeError(f"refused: {p} changed since the retro touched it")
-            if cur_sha != w["after_sha"]:
+            if not _same(cur, w["after_sha"]):
                 raise RuntimeError(f"refused: {p} changed since the retro touched it")
         todo.append(w)
     msgs = []
@@ -127,7 +147,7 @@ def undo(cfg: Path, run_id: str) -> list:
                 p.unlink()
             msgs.append(f"removed {p} (created by the retro)")
         else:
-            p.write_text(w["before"], encoding="utf-8")
+            p.write_text(w["before"], encoding="utf-8", newline="" if w.get("exact") else None)
             msgs.append(f"restored {p} to its earlier content")
     j["reverted_at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     _save(cfg, j)

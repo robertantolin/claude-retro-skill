@@ -627,3 +627,36 @@ Shipped wording (variant B): nothing added to step 2; the whole rule lives in 4b
 | mod-signals, variant B | 3/5 (`17-01-31`) | diff_file, ledger_line x2: one run named the finding, quoted its four windows and read counts, then chose No action because the sandbox home has no mods folder, rules folder or settings file to build on; one run proposed the hook but wrote its files under an unexpanded `~` path (the wrong-home miss first recorded on 09-25) |
 
 Variant B is above the same-minute control on the flaky case with no report skips, so the conditional-subsection placement holds again. The new case's two misses are not wording skips: a sandbox home with a `mods` folder and a settings file would remove the first, and the tilde path is a known shell flake. Both are fixture follow-ups, not text changes.
+
+## Post-edit result, 2026-10-23 (mechanism order, lesson shape, store routing; from the Harness² paper)
+
+Edits under test, all in step 4 prose plus two store-review lines, borrowed from Harness² (Xu et al., arXiv 2610.14224): (1) the Mechanism-instead card line names the mechanism "tried in this order: a skill, a script or command, a subagent, then a hook, rule file or gate", and says always-on text is the last resort because every session pays for it; the same order replaces "the hook, rule file or script" on the store review's card bullet; the `rule-skill-hook` kind's target gains `.claude/agents/` so a subagent mechanism has a kind. (2) A `global-line` anywhere in `~/.claude/CLAUDE.md` other than Machine gotchas names the line it shortens or removes to pay for the words it adds, or says none can go and why. (3) A lesson names the kind of situation and the action: too general changes no behaviour ("be thorough"), too specific never fires again ("the fee rose to 250 on 1 January"); the same test joins the store review's Refinement lens. (4) The global-versus-project routing test: a lesson that would hold just as well in a different project is global; one that stops making sense when the project changes stays in the project store. No new step, subsection or request.
+
+### First pass
+
+Micro-test, recurrence, five runs each, same minute: variant 5/5 (`2026-10-23T09-56-02`), control 4/5 (`09-56-05`, cites_existing paraphrase, known). Recurrence ends in No action, so the card bullet never printed there; it guards against report skips only. All ten streams print the full report.
+
+Full gate, eleven processes three seconds apart (`10-12-11` to `10-12-41`): 32 of 34. Every case 3/3 or 5/5 except hard-number 2/3 (asked in chat, known) and no-decision 4/5 with its same-minute control also 4/5 (report skip, known). Same-minute recheck of the two cases with no control that morning (`10-27-31` to `10-27-40`, three runs each): hard-number variant 3/3, control 3/3; mod-signals variant 3/3, control 2/3 (ledger_line).
+
+A self-review then found the pay-for-it sentence read "any other `global-line`", which runs took to include Machine gotchas lines when that section still had room, so two rules claimed one object. Second pass: the sentence scoped to "anywhere else in `~/.claude/CLAUDE.md`", plus the store-review card bullet above. The live text was restored to the committed version for a real control.
+
+### Second pass (shipped)
+
+Micro-test, hard-number, five runs each, same minute: variant 5/5 (`10-47-02`), control 4/5 (`10-47-05`, asked in chat, known). The one variant card that weighed the budget wrote "7 of 350 words, so 28 words free. The new line adds about 17 and needs no cut", the Machine gotchas rule applied as before; no run applied the new sentence to a gotchas line.
+
+Full gate, eleven processes three seconds apart (`10-53-25` to `10-53-56`):
+
+| Case | Runs passing | Failing checks |
+|---|---|---|
+| self-caught | 3/3 | none |
+| one-correction | 3/3 | none |
+| two-corrections | 3/3 | none |
+| recurrence | 3/3 | none |
+| findings-open | 3/3 | none |
+| candidate-confirms | 3/3 | none |
+| hard-number | 3/3 | none |
+| mod-signals | 2/3 | diff_file x1 (named the signal, chose No action: the sandbox has nothing to build on, known) |
+| over-cap | 5/5 | none |
+| no-decision | 3/5 (control 2/5) | quotes_corrections x2 (report skip, known); control also ledger_line x1 |
+
+31 of 34, against 32 of 34 on the first pass and 28 of 31 on the 2026-10-10 shipped wave. The flaky case sits above its same-minute control. Of 35 Mechanism-instead lines in this gate's streams, 13 weighed a skill or script by name before settling (33 of 35 settle on "none fits", as before), and two over-cap cards named a release-notes skill as the mechanism that would hold the lesson ("a skill could write release notes grouped by user impact"); outcomes did not change. Shipped text is byte-identical to the tested variant: the same two patch scripts applied to both, `cmp` clean.

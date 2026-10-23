@@ -164,6 +164,82 @@ def test_undo_skips_an_already_restored_delete(tmp_path):
     assert f.read_text() == "bye"
 
 
+def test_undo_restores_line_endings_byte_for_byte(tmp_path):
+    lf = tmp_path / "lf.md"
+    crlf = tmp_path / "crlf.md"
+    lf.write_bytes(b"one\ntwo\n")
+    crlf.write_bytes(b"one\r\ntwo\r\n")
+    run = journal.begin(tmp_path, "P")
+    for f in (lf, crlf):
+        journal.snapshot(tmp_path, run, f, "store-write", 1)
+        f.write_bytes(f.read_bytes() + b"three\n")
+        journal.commit(tmp_path, run, f)
+    journal.undo(tmp_path, run)
+    assert lf.read_bytes() == b"one\ntwo\n"
+    assert crlf.read_bytes() == b"one\r\ntwo\r\n"
+
+
+def test_two_writes_to_one_file_in_a_run_undo_to_the_first_before(tmp_path):
+    idx = tmp_path / "MEMORY.md"
+    idx.write_bytes(b"- [A](a.md)\n")
+    run = journal.begin(tmp_path, "P")
+    for line in (b"- [B](b.md)\n", b"- [C](c.md)\n"):
+        journal.snapshot(tmp_path, run, idx, "store-write", 1)
+        idx.write_bytes(idx.read_bytes() + line)
+        journal.commit(tmp_path, run, idx)
+    journal.undo(tmp_path, run)
+    assert idx.read_bytes() == b"- [A](a.md)\n"
+
+
+def test_two_writes_to_one_file_still_refuse_after_an_outside_edit(tmp_path):
+    idx = tmp_path / "MEMORY.md"
+    idx.write_bytes(b"a\n")
+    run = journal.begin(tmp_path, "P")
+    for line in (b"b\n", b"c\n"):
+        journal.snapshot(tmp_path, run, idx, "store-write", 1)
+        idx.write_bytes(idx.read_bytes() + line)
+        journal.commit(tmp_path, run, idx)
+    idx.write_bytes(b"someone else\n")
+    try:
+        journal.undo(tmp_path, run)
+    except RuntimeError as e:
+        assert "MEMORY.md" in str(e) and idx.read_bytes() == b"someone else\n"
+        return
+    raise AssertionError("expected refusal")
+
+
+def test_two_writes_refuse_when_a_peer_edited_between_them(tmp_path):
+    idx = tmp_path / "MEMORY.md"
+    idx.write_bytes(b"a\n")
+    run = journal.begin(tmp_path, "P")
+    journal.snapshot(tmp_path, run, idx, "store-write", 1)
+    idx.write_bytes(b"a\nb\n")
+    journal.commit(tmp_path, run, idx)
+    idx.write_bytes(b"a\nb\nPEER\n")
+    journal.snapshot(tmp_path, run, idx, "store-write", 2)
+    idx.write_bytes(b"a\nb\nPEER\nc\n")
+    journal.commit(tmp_path, run, idx)
+    try:
+        journal.undo(tmp_path, run)
+    except RuntimeError as e:
+        assert "MEMORY.md" in str(e) and idx.read_bytes() == b"a\nb\nPEER\nc\n"
+        return
+    raise AssertionError("expected refusal")
+
+
+def test_undo_of_a_journal_written_before_exact_line_endings(tmp_path):
+    f = tmp_path / "old-run.md"
+    f.write_bytes(b"c\r\nd\r\n")
+    run = journal.begin(tmp_path, "P")
+    j = journal.load(tmp_path, run)
+    j["writes"].append({"path": str(f), "kind": "store-write", "proposal": 1, "before": "a\nb\n",
+                        "before_sha": journal.sha("a\nb\n"), "after_sha": journal.sha("c\nd\n"),
+                        "deleted": False, "trash": None})
+    journal._save(tmp_path, j)
+    journal.undo(tmp_path, run)
+    assert f.read_text(encoding="utf-8") == "a\nb\n"
+
+
 def test_cli_exit_codes(tmp_path, capsys):
     assert journal.main(["--claude-dir", str(tmp_path), "begin", "--project", "P"]) == 0
     run = capsys.readouterr().out.strip()

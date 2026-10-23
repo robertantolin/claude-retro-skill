@@ -12,7 +12,7 @@ Below this prompt the retro gives you: the store folder, the project instruction
 2. Look for proposals in this order of preference:
    - **Automation.** A lesson that states a repeatable rule a machine can enforce becomes a hook, a `.claude/rules/` file, a guard pattern or a script, and the lesson shrinks to one line pointing at that mechanism. Kind `rule-skill-hook`; the one proposal carries both the mechanism and the trimmed lesson. Propose it when you can write the mechanism in full from what you read; one that needs details you lack waits for a later review.
    - **Consolidation.** Two or more entries on one subject merge into one new lesson file of at most 120 words in its body, with one index line in `MEMORY.md`. Kind `store-write`. The merged body states every fact of the entries it absorbs. A merge is one proposal however many files it absorbs.
-   - **Refinement.** An entry that mixes narrative (dates, session stories, commit hashes, who said what) with the lesson is rewritten to the lesson alone, at most 120 words. Kind `store-write`.
+   - **Refinement.** An entry that mixes narrative (dates, session stories, commit hashes, who said what) with the lesson is rewritten to the lesson alone, at most 120 words. So is an entry too general to change behaviour ("be thorough") or too specific to fire again (one date, one figure): it is rewritten to name the kind of situation and the action, or proposed as a consolidation with the lesson it illustrates. Kind `store-write`.
    A dormant lesson is a consolidation or refinement candidate first. Every proposal keeps each fact in a named lesson file.
 3. Keep only proposals whose kind is free of a raised bar and that differ from every denied title: a denied merge or rewrite of the same files stays decided.
 4. Rank by entries removed first, then by words saved, and return at most the number of free slots.
@@ -32,6 +32,6 @@ Plain text, one block per proposal, in this shape. Kind and Entries are for the 
 - What you get: the behaviour or the store that is different next time.
 - Why you might say no: one honest sentence.
 - Exact edit: a unified diff in a fenced `diff` block covering every file the proposal touches, with full paths: the new or edited lesson files, the `MEMORY.md` lines, any repointed links, the mechanism file for an automation, and for each absorbed file a removal (`+++ /dev/null`).
-- Mechanism instead: on a `store-write`, the hook, rule file or script that would enforce the lesson, or "none fits" with the reason.
+- Mechanism instead: on a `store-write`, the mechanism that would enforce the lesson, tried in this order: a skill, a script or command, a subagent, then a hook, rule file or gate; or "none fits" with the reason.
 
 End with one line: `Store review: <N> entries read, <M> proposals.`, adding `, held back by a raised bar: <kinds>` when step 3 set any aside for that reason. When nothing qualifies, return only that line with 0 proposals and one sentence saying why.
